@@ -1,0 +1,8 @@
+rasterio>=1.4
+rio-cogeo
+numpy
+mercantile
+pillow
+pmtiles
+pytest
+ruff

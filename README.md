@@ -12,3 +12,14 @@ This repository holds the public web map, the live-preview API and the data and 
 > **Not an official warning.** This is a non-commercial research demo. The model is uncalibrated and tends to over-predict flooded area. Do not use it for evacuation or emergency decisions.
 
 See [`docs/`](docs/) for data licences, methods and limitations.
+
+## Build the data release
+
+```bash
+python3 -m venv .venv && .venv/bin/pip install -r pipelines/requirements-dev.txt
+brew install gdal tippecanoe pmtiles          # macOS; GDAL command-line tools must be on PATH
+make dist V=v20261121                          # COGs, PMTiles, catalog.json, then the checks
+```
+
+The two research folders (`buja_geo_twin`, `buja_flood_forecast`) are expected next to this repo, or set
+`BUJA_TWIN_DIR` / `BUJA_LAB_DIR`. Output goes to `dist/<version>/` (not tracked by git).

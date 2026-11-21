@@ -7,15 +7,11 @@ public CSV does not expose local home-directory names.
 """
 import csv
 import hashlib
-import os
 import sys
 from pathlib import Path
 
-HERE = Path(__file__).resolve().parents[2]  # folder that holds the sibling projects
-TWIN = Path(os.environ.get("BUJA_TWIN_DIR", HERE / "buja_geo_twin"))
-LAB = Path(os.environ.get("BUJA_LAB_DIR", HERE / "buja_flood_forecast"))
-EXP = TWIN / "exports/blender_flood_twin"
-RUNS = LAB / "04_models/sfincs/runs"
+from common import EXPORTS as EXP, LAB, RUNS, TWIN
+
 
 # (layer id, path, licence, publish?)
 SOURCES = [
