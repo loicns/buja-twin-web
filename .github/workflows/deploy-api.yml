@@ -1,0 +1,43 @@
+name: deploy-api
+on:
+  push: { branches: [main], paths: ["api/**", ".github/workflows/deploy-api.yml"] }
+  workflow_dispatch: {}
+permissions: { contents: read, id-token: write }     # OIDC: GitHub proves who it is to AWS, no stored keys
+env:
+  FUNCTION: buja-flood-api
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pull model files (private R2 prefix)
+        env:                                          # R2 keys only in this step, so they never clash with the AWS role below
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+        run: |
+          aws s3 cp --recursive --endpoint-url "https://${{ secrets.CF_ACCOUNT_ID }}.r2.cloudflarestorage.com" \
+            s3://buja-twin-data/model/v1/ api/model/
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -r api/requirements.txt pytest httpx && cd api && MODEL_DIR=model pytest -q tests
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: "Build and push (no provenance, Lambda rejects the multi-platform manifest)"
+        run: |
+          IMG=${{ steps.ecr.outputs.registry }}/buja-api:${GITHUB_SHA::7}
+          docker buildx build --platform linux/amd64 --provenance=false --sbom=false -t "$IMG" --push api
+          echo "IMG=$IMG" >> "$GITHUB_ENV"
+      - name: Deploy
+        run: |
+          aws lambda update-function-code --function-name "$FUNCTION" --image-uri "$IMG"
+          aws lambda wait function-updated --function-name "$FUNCTION"
+      - name: Smoke test
+        run: |
+          URL=$(aws lambda get-function-url-config --function-name "$FUNCTION" --query FunctionUrl --output text)
+          curl -fsS --retry 3 --max-time 60 "${URL}health"
+          curl -fsS --max-time 60 "${URL}predict?rain_mm=100&lake_m=772.5" | python -c "import sys,json; d=json.load(sys.stdin); assert d['wet_km2_gt_0p5m']>0, d"

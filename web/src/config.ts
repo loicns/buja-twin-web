@@ -7,3 +7,5 @@ export const DATA_BASE: string = (import.meta.env.VITE_DATA_URL as string | unde
 export const FEEDBACK_URL: string = (import.meta.env.VITE_FEEDBACK_URL as string | undefined) || "";
 export const CODE_URL = "https://github.com/loicns/buja-twin-web";
 export const BASEMAP_STYLE = "https://tiles.openfreemap.org/styles/positron";
+/** Live-preview API (AWS Lambda Function URL). The preview panel stays hidden while this is empty. */
+export const API_URL: string = ((import.meta.env.VITE_API_URL as string | undefined) || "").replace(/\/$/, "");

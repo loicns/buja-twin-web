@@ -86,5 +86,15 @@
   "d_feedback": "You are testing this: tell us what is missing or wrong.",
   "short_s1": "S1 frequent (10-yr)",
   "short_s2": "S2 severe (100-yr)",
-  "short_s3": "S3 Copernicus"
+  "short_s3": "S3 Copernicus",
+  "live_title": "Quick preview (AI)",
+  "live_intro": "A machine-learning model reproduces SFINCS in about a second. It is a preview, not a simulation, and it is less reliable outside its training range.",
+  "live_rain": "Rain: {v} mm",
+  "live_lake": "Lake: {v} m",
+  "live_show": "Show the preview",
+  "live_wake": "Waking the model, about 10 s…",
+  "live_busy": "Computing…",
+  "live_error": "Preview is unavailable right now.",
+  "live_result": "AI preview (surrogate, not SFINCS): {km} km² deeper than 0.5 m, maximum depth {max} m",
+  "live_warn": "Outside the training range (rain 33 to 166 mm, lake 769.9 to 773.0 m): extrapolation, not reliable."
 }

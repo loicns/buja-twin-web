@@ -86,5 +86,15 @@
   "d_feedback": "Vous êtes en test : dites-nous ce qui manque ou ce qui est faux.",
   "short_s1": "S1 fréquent (10 ans)",
   "short_s2": "S2 sévère (100 ans)",
-  "short_s3": "S3 Copernicus"
+  "short_s3": "S3 Copernicus",
+  "live_title": "Aperçu rapide (IA)",
+  "live_intro": "Un modèle d'apprentissage reproduit SFINCS en une seconde. C'est un aperçu, pas une simulation, et il est moins fiable hors de sa plage d'entraînement.",
+  "live_rain": "Pluie : {v} mm",
+  "live_lake": "Lac : {v} m",
+  "live_show": "Afficher l'aperçu",
+  "live_wake": "Réveil du modèle, environ 10 s…",
+  "live_busy": "Calcul…",
+  "live_error": "Aperçu indisponible pour le moment.",
+  "live_result": "Aperçu IA (modèle de substitution, pas SFINCS) : {km} km² à plus de 0,5 m, profondeur maximale {max} m",
+  "live_warn": "Hors de la plage d'entraînement (pluie 33 à 166 mm, lac 769,9 à 773,0 m) : extrapolation, peu fiable."
 }

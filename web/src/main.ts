@@ -7,7 +7,7 @@ import maplibregl, {
 import { Protocol } from "pmtiles";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./style.css";
-import { BASEMAP_STYLE, CODE_URL, FEEDBACK_URL } from "./config";
+import { API_URL, BASEMAP_STYLE, CODE_URL, FEEDBACK_URL } from "./config";
 import { loadRelease, SCENARIO_IDS, type Release, type Scenario, type ScenarioId } from "./data";
 import { applyStatic, nf, people, t, toggleLang } from "./i18n";
 
@@ -263,6 +263,7 @@ function renderPanel(): void {
     toggle("t-priority", t("layer_priority"), showPriority, (v) => { showPriority = v; syncLayers(); }),
     toggle("t-zones", t("layer_zones"), showZones, (v) => { showZones = v; syncLayers(); }),
     view,
+    ...livePanel(),
     h("h2", {}, t("legend_title")),
     h("div", { class: "legend" }, ...classes.map((c, i) => swatch(DEPTH_COLOURS[i], c)), swatch(DRY_COLOUR, t("lg_dry"))),
     h("h2", {}, t("lg_prio")),
@@ -276,6 +277,84 @@ function renderPanel(): void {
     o.selected = id === active;
     return o;
   }));
+}
+
+
+// ---- live preview (surrogate API) -------------------------------------------------------------
+type Corners = [[number, number], [number, number], [number, number], [number, number]];
+interface Preview { wet_km2_gt_0p5m: number; max_depth_m: number; corners_4326: Corners; warnings: string[] }
+let liveOn = false;
+let liveRain = 120;
+let liveLake = 772.5;
+let liveTimer: number | undefined;
+let liveSeq = 0;
+let liveMsg = "";
+let liveWarn = false;
+
+function setLiveMsg(msg: string, warn = false): void {
+  liveMsg = msg;
+  liveWarn = warn;
+  const el = document.getElementById("live-msg");
+  if (el) { el.textContent = msg; el.classList.toggle("warnline", warn); }
+}
+
+function clearPreview(): void {
+  if (map.getLayer("preview")) map.removeLayer("preview");
+  if (map.getSource("preview")) map.removeSource("preview");
+}
+
+function schedulePreview(): void {
+  window.clearTimeout(liveTimer);
+  if (!liveOn) return;
+  liveTimer = window.setTimeout(() => { void runPreview(); }, 350); // one request when the slider stops
+}
+
+async function runPreview(): Promise<void> {
+  const seq = ++liveSeq;
+  const q = `rain_mm=${liveRain}&lake_m=${liveLake}`;
+  setLiveMsg(t("live_busy"));
+  const wake = window.setTimeout(() => { if (seq === liveSeq) setLiveMsg(t("live_wake")); }, 2500);
+  try {
+    const r = await fetch(`${API_URL}/predict?${q}`);
+    if (!r.ok) throw new Error(String(r.status));
+    const p = (await r.json()) as Preview;
+    if (seq !== liveSeq) return;
+    const url = `${API_URL}/predict.png?${q}`;
+    const src = map.getSource("preview") as maplibregl.ImageSource | undefined;
+    if (src) src.updateImage({ url, coordinates: p.corners_4326 });
+    else {
+      map.addSource("preview", { type: "image", url, coordinates: p.corners_4326 });
+      map.addLayer({ id: "preview", type: "raster", source: "preview",
+        paint: { "raster-opacity": 0.85, "raster-resampling": "nearest" } }, "buildings-3d");
+    }
+    setLiveMsg(p.warnings.length ? t("live_warn") : t("live_result", { km: nf(p.wet_km2_gt_0p5m, 1), max: nf(p.max_depth_m, 1) }), p.warnings.length > 0);
+    if (!p.warnings.length) liveWarn = false;
+  } catch (err) {
+    console.error(err);
+    if (seq === liveSeq) setLiveMsg(t("live_error"), true);
+  } finally {
+    window.clearTimeout(wake);
+  }
+}
+
+function livePanel(): HTMLElement[] {
+  if (!API_URL) return [];
+  const rainLabel = h("label", { for: "live-rain" }, t("live_rain", { v: nf(liveRain) }));
+  const lakeLabel = h("label", { for: "live-lake" }, t("live_lake", { v: nf(liveLake, 2) }));
+  const rain = h("input", { type: "range", id: "live-rain", min: "20", max: "200", step: "5", value: String(liveRain) }) as HTMLInputElement;
+  const lake = h("input", { type: "range", id: "live-lake", min: "769.5", max: "773.5", step: "0.05", value: String(liveLake) }) as HTMLInputElement;
+  rain.addEventListener("input", () => { liveRain = Number(rain.value); rainLabel.textContent = t("live_rain", { v: nf(liveRain) }); schedulePreview(); });
+  lake.addEventListener("input", () => { liveLake = Number(lake.value); lakeLabel.textContent = t("live_lake", { v: nf(liveLake, 2) }); schedulePreview(); });
+  const on = h("input", { type: "checkbox", id: "live-on" }) as HTMLInputElement;
+  on.checked = liveOn;
+  on.addEventListener("change", () => {
+    liveOn = on.checked;
+    if (liveOn) schedulePreview(); else { liveSeq++; clearPreview(); setLiveMsg(""); }
+  });
+  const msg = h("p", { class: `note${liveWarn ? " warnline" : ""}`, id: "live-msg", role: "status" }, liveMsg);
+  return [h("h2", {}, t("live_title")), h("p", { class: "note" }, t("live_intro")),
+    h("label", { class: "toggle" }, on, t("live_show")),
+    h("div", { class: "slider" }, rainLabel, rain), h("div", { class: "slider" }, lakeLabel, lake), msg];
 }
 
 // ---- limitations drawer ---------------------------------------------------------------------

@@ -68,6 +68,9 @@ table.cmp tr.on td { font-weight: 650; background: #eef4fa; }
 .toggle input { width: 18px; height: 18px; }
 .btn { font: inherit; font-size: .875rem; border: 1px solid var(--navy); background: #fff; color: var(--navy); border-radius: 6px; padding: 6px 12px; min-height: 36px; cursor: pointer; margin-top: 6px; }
 .btn:hover { background: #eef4fa; }
+.slider { display: grid; gap: 2px; font-size: .875rem; margin: 6px 0; }
+.slider input[type=range] { width: 100%; accent-color: var(--d3); min-height: 28px; }
+.warnline { color: #8a1c0f; }
 .legend { display: grid; gap: 4px; font-size: .8125rem; }
 .legend div { display: flex; align-items: center; gap: 8px; }
 .sw { width: 18px; height: 12px; border-radius: 2px; border: 1px solid rgba(0,0,0,.2); flex: none; }
