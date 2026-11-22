@@ -22,8 +22,9 @@ SOURCES = [
     ("bridges",   EXP / "critical_bridges.gpkg", "OSM ODbL", "y"),
     ("admin",     EXP / "administrative_boundaries.gpkg", "OSM ODbL", "y"),
     ("chm_1m",    TWIN / "vegetation/processed/meta_chm_1m_domain.tif", "Meta/WRI CC BY 4.0", "n"),
+    ("worldpop", LAB / "01_raw/population/bdi_ppp_2020_UNadj_constrained.tif", "WorldPop CC BY 4.0", "n"),
     ("s1", RUNS / "rain10_lake2024/max_water_depth_10m.tif", "own CC BY 4.0", "y"),
-    ("s2", RUNS / "rain100_lake2024/max_water_depth_10m.tif", "own CC BY 4.0", "y"),
+    ("s2", RUNS / "cnfix_rain100_lake2024/max_water_depth_10m.tif", "own CC BY 4.0", "y"),
     ("s3", RUNS / "cnfix_bench_cop_s4/max_water_depth_10m.tif", "own CC BY 4.0", "y"),
 ]
 BLOCKLIST = ("CV_", ".env", "credentials")

@@ -51,7 +51,7 @@ def test_pmtiles_verify(f):
 
 def test_all_expected_pmtiles_present():
     names = {p.stem for p in pmtiles_files()}
-    assert names == {"buildings", "context", "terrain", "depth_s1", "depth_s2", "depth_s3"}
+    assert names == {"buildings", "context", "terrain", "depth_s1", "depth_s2", "depth_s3", "hex", "zones"}
 
 
 def test_total_size_under_2gb():
@@ -100,3 +100,48 @@ def test_depth_tiles_use_the_four_classes():
         a = np.asarray(Image.open(io.BytesIO(data)).convert("RGBA"))[..., 3]
         alphas |= set(np.unique(a).tolist())
     assert {160, 190, 215, 235} <= alphas, alphas
+
+
+def _first_tile(name: str, z: int) -> dict:
+    import gzip
+
+    import mapbox_vector_tile as mvt
+
+    tiles, _ = _tiles(name)
+    data = next(d for (tz, _, _), d in tiles if tz == z)
+    try:
+        data = gzip.decompress(data)
+    except OSError:
+        pass
+    return mvt.decode(data)
+
+
+def test_building_tiles_carry_numeric_depths():
+    feat = _first_tile("buildings", 15)["buildings"]["features"][0]
+    assert isinstance(feat["id"], int)  # the GeoPackage fid, usable with MapLibre feature-state
+    props = feat["properties"]
+    for k in ("h", "a", "d_s1", "d_s2", "d_s3"):
+        assert isinstance(props[k], (int, float)), (k, props)
+    assert "people" not in props  # people are published per hex and neighbourhood only
+
+
+def test_hex_and_zone_tiles_have_people_and_rank():
+    hx = _first_tile("hex", 12)["hex"]["features"][0]["properties"]
+    assert {"buildings", "people", "p_s2", "priority", "rank_s2"} <= set(hx)
+    assert "buildings_ge_0p5m_s2" in _first_tile("zones", 12)["zones"]["features"][0]["properties"]
+
+
+def test_exposure_outputs_are_complete_and_consistent():
+    import pandas as pd
+
+    ex = DIST / "exposure"
+    b = pd.read_parquet(ex / "exposure_buildings.parquet")
+    assert len(b) == 254_532 and b["bid"].is_unique
+    for s in ("s1", "s2", "s3"):
+        assert b[f"d_{s}"].notna().all() and (b[f"d_{s}"] >= 0).all()
+        assert ((b[f"c_{s}"] >= 2) == (b[f"d_{s}"] >= 0.5)).all()
+    summary = json.loads((ex / "exposure_summary.json").read_text())
+    assert summary["people_method"]["share_in_pixels_without_buildings"] < 0.05  # people lost to empty pixels
+    assert abs(b["people"].sum() - summary["people_total"]) < 2
+    top = pd.read_csv(ex / "top20_hexes.csv")
+    assert len(top) == 20 and top["rank_s2"].is_monotonic_increasing and top["p_s2"].iloc[0] > 0

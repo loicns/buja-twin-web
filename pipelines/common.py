@@ -13,5 +13,7 @@ LAB = Path(os.environ.get("BUJA_LAB_DIR", HERE / "buja_flood_forecast"))
 EXPORTS = TWIN / "exports/blender_flood_twin"
 RUNS = LAB / "04_models/sfincs/runs"
 
-# The three headline scenarios: id -> SFINCS run folder
-SCENARIOS = {"s1": "rain10_lake2024", "s2": "rain100_lake2024", "s3": "cnfix_bench_cop_s4"}
+# The three headline scenarios: id -> SFINCS run folder.
+# S2 and S3 are the runs made after the lab's curve-number fix (cnfix_*). S1 has no post-fix run yet;
+# the fix changed flooded area by under 1 % in the two pairs that were re-run (phase5_cn_fix_report.md).
+SCENARIOS = {"s1": "rain10_lake2024", "s2": "cnfix_rain100_lake2024", "s3": "cnfix_bench_cop_s4"}

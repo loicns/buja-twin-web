@@ -6,3 +6,4 @@ pillow
 pmtiles
 pytest
 ruff
+mapbox-vector-tile

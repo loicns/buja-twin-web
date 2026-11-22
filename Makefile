@@ -4,9 +4,15 @@ PYTHON ?= $(CURDIR)/.venv/bin/python
 export PATH := $(CURDIR)/.venv/bin:$(PATH)
 export PYTHON
 
+# WorldPop people-per-pixel raster (CC BY 4.0), downloaded into the lab's 01_raw/population/
+POP ?= $(CURDIR)/../buja_flood_forecast/01_raw/population/bdi_ppp_2020_UNadj_constrained.tif
+
 .PHONY: dist test publish
 dist:
 	$(PYTHON) pipelines/package_data.py --out $(DIST)
+	$(PYTHON) pipelines/exposure.py --dist $(DIST) --pop $(POP)
+	$(PYTHON) pipelines/rollups.py --dist $(DIST)
+	$(PYTHON) pipelines/collect_validation.py --dist $(DIST)
 	bash pipelines/make_tiles.sh $(DIST)
 	DIST=$(DIST) $(PYTHON) -m pytest -q pipelines/tests/test_dist.py
 
