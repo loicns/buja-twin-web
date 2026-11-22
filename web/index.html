@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="description" content="Bujumbura flood digital twin: modelled flood depth, exposed buildings and priority areas. Research demo, not an official warning." />
+    <meta name="theme-color" content="#16324f" />
+    <title>Bujumbura – jumeau numérique des inondations</title>
+  </head>
+  <body>
+    <header class="bar">
+      <h1 id="title" data-i18n="title">Bujumbura – jumeau numérique des inondations</h1>
+      <label class="field">
+        <span class="sr" data-i18n="scenario">Scénario</span>
+        <select id="scenario"></select>
+      </label>
+      <div class="bar-buttons">
+        <button id="info" type="button" data-i18n="limits">Limites</button>
+        <button id="lang" type="button" aria-label="Langue / Language">EN</button>
+      </div>
+    </header>
+
+    <main id="map" aria-label="Carte"></main>
+
+    <aside id="panel" class="panel" aria-label="Panneau d'information">
+      <button id="sheet" class="sheet-handle" type="button" aria-expanded="true" data-i18n-aria="panel_toggle">
+        <span class="handle-bar"></span>
+      </button>
+      <div id="panel-body" class="panel-body"></div>
+    </aside>
+
+    <dialog id="drawer" class="drawer" aria-labelledby="drawer-title">
+      <div class="drawer-head">
+        <h2 id="drawer-title" data-i18n="limits_title">Limites et sources</h2>
+        <button id="drawer-close" type="button" data-i18n-aria="close">✕</button>
+      </div>
+      <div id="drawer-body" class="drawer-body"></div>
+    </dialog>
+
+    <div id="toast" class="toast" role="status" hidden></div>
+    <noscript>Cette carte nécessite JavaScript. / This map needs JavaScript.</noscript>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

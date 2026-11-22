@@ -1,0 +1,19 @@
+{
+  "name": "buja-flood-twin-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5173 --strictPort",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --port 5173 --strictPort"
+  },
+  "dependencies": {
+    "maplibre-gl": "^5.24.1",
+    "pmtiles": "^4.5.0"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vite": "^6.4.6"
+  }
+}
