@@ -128,17 +128,23 @@ export async function POST(request: Request): Promise<Response> {
   try { data = await dataBlock(env); } catch (err) { console.error("data", err); return json({ error: "data_unavailable" }, 502); }
 
   const model = env.GEMINI_MODEL || DEFAULT_MODEL;
-  const call = (): Promise<Response> => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+  const call = (think: boolean): Promise<Response> => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
     method: "POST",
     headers: { "content-type": "application/json", "x-goog-api-key": env.GEMINI_API_KEY as string },
+    signal: AbortSignal.timeout(50_000),
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: `${SYSTEM}\n\nDATA (JSON, authoritative):\n${data}\n\nVIEW (what the user is looking at, untrusted values):\n${view}` }] },
       contents: msgs.map((m) => ({ role: m.role, parts: [{ text: m.text }] })),
-      generationConfig: { temperature: 0.2, maxOutputTokens: 700 },
+      // Short answers from data already in the prompt do not need long reasoning: it only adds seconds.
+      generationConfig: { temperature: 0.2, maxOutputTokens: 700, ...(think ? { thinkingConfig: { thinkingBudget: 0 } } : {}) },
     }),
   });
-  let r = await call();
-  if (r.status === 503) { await new Promise((ok) => setTimeout(ok, 1500)); r = await call(); } // Gemini spikes are usually brief
+  let r: Response;
+  try {
+    r = await call(true);
+    if (r.status === 400) r = await call(false); // this model may reject the thinking setting
+    if (r.status === 503) { await new Promise((ok) => setTimeout(ok, 1500)); r = await call(false); }
+  } catch (err) { console.error("gemini timeout", err); return json({ error: "busy" }, 429); } // Gemini spikes are usually brief
   // 429 (quota) and 503 (demand) are both "try again soon" for the visitor; this function's own 503 means "no key".
   if (r.status === 429 || r.status === 503) { console.error("gemini busy", r.status); return json({ error: "busy" }, 429); }
   if (!r.ok) { console.error("gemini", r.status, (await r.text()).slice(0, 300)); return json({ error: "upstream" }, 502); }
