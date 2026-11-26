@@ -8,12 +8,13 @@
 declare const process: { env: Record<string, string | undefined> };
 interface Env {
   GEMINI_API_KEY?: string;
-  GEMINI_MODEL?: string; // default below
+  GEMINI_MODEL?: string; // one model name
+  GEMINI_MODELS?: string; // or a comma list, tried in order
   DATA_URL?: string;
 }
 interface InMsg { role: "user" | "model"; content: string }
 
-const DEFAULT_MODEL = "gemini-3.8-flash";
+const DEFAULT_MODELS = "gemini-3.8-flash,gemini-flash-latest,gemini-3.1-flash-lite";
 const DEFAULT_DATA = "https://pub-7368a1bf7f2b44898e1f5028f7fdb733.r2.dev";
 const MAX_BODY = 8_000, MAX_MSGS = 8, MAX_CHARS = 600;
 
@@ -127,11 +128,12 @@ export async function POST(request: Request): Promise<Response> {
   let data: string;
   try { data = await dataBlock(env); } catch (err) { console.error("data", err); return json({ error: "data_unavailable" }, 502); }
 
-  const model = env.GEMINI_MODEL || DEFAULT_MODEL;
-  const call = (think: boolean): Promise<Response> => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+  // Try each model in turn: new models are often overloaded (503), rate-limited (429) or slow. Override with GEMINI_MODELS.
+  const models = (env.GEMINI_MODELS || env.GEMINI_MODEL || DEFAULT_MODELS).split(",").map((m) => m.trim()).filter(Boolean);
+  const call = (model: string, think: boolean): Promise<Response> => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
     method: "POST",
     headers: { "content-type": "application/json", "x-goog-api-key": env.GEMINI_API_KEY as string },
-    signal: AbortSignal.timeout(50_000),
+    signal: AbortSignal.timeout(18_000),
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: `${SYSTEM}\n\nDATA (JSON, authoritative):\n${data}\n\nVIEW (what the user is looking at, untrusted values):\n${view}` }] },
       contents: msgs.map((m) => ({ role: m.role, parts: [{ text: m.text }] })),
@@ -139,14 +141,17 @@ export async function POST(request: Request): Promise<Response> {
       generationConfig: { temperature: 0.2, maxOutputTokens: 700, ...(think ? { thinkingConfig: { thinkingBudget: 0 } } : {}) },
     }),
   });
-  let r: Response;
-  try {
-    r = await call(true);
-    if (r.status === 400) r = await call(false); // this model may reject the thinking setting
-    if (r.status === 503) { await new Promise((ok) => setTimeout(ok, 1500)); r = await call(false); }
-  } catch (err) { console.error("gemini timeout", err); return json({ error: "busy" }, 429); } // Gemini spikes are usually brief
-  // 429 (quota) and 503 (demand) are both "try again soon" for the visitor; this function's own 503 means "no key".
-  if (r.status === 429 || r.status === 503) { console.error("gemini busy", r.status); return json({ error: "busy" }, 429); }
+  let r: Response | null = null;
+  for (const model of models.slice(0, 3)) {
+    try {
+      r = await call(model, true);
+      if (r.status === 400) r = await call(model, false); // this model may reject the thinking setting
+    } catch (err) { console.error("gemini timeout", model, err); r = null; continue; }
+    if (![429, 503, 404].includes(r.status)) break;
+    console.error("gemini unavailable", model, r.status);
+  }
+  // Every model was busy, rate-limited or too slow: tell the visitor to retry. This function's own 503 means "no key".
+  if (!r || [429, 503, 404].includes(r.status)) return json({ error: "busy" }, 429);
   if (!r.ok) { console.error("gemini", r.status, (await r.text()).slice(0, 300)); return json({ error: "upstream" }, 502); }
   const out = (await r.json()) as { candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[] };
   const answer = out.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("").trim();
