@@ -3,41 +3,64 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="description" content="Bujumbura flood digital twin: modelled flood depth, exposed buildings and priority areas. Research demo, not an official warning." />
-    <meta name="theme-color" content="#16324f" />
-    <title>Bujumbura – jumeau numérique des inondations</title>
+    <meta name="description" content="Bujumbura modelled flood map: water depth, exposed buildings, priority areas, canopy. Research demo, not an official warning." />
+    <meta name="theme-color" content="#071426" />
+    <title>Bujumbura – carte des inondations modélisées</title>
   </head>
   <body>
+    <a class="skip" href="#map" data-i18n="skip">Aller à la carte</a>
     <header class="bar">
-      <h1 id="title" data-i18n="title">Bujumbura – jumeau numérique des inondations</h1>
-      <label class="field">
-        <span class="sr" data-i18n="scenario">Scénario</span>
-        <select id="scenario"></select>
-      </label>
-      <div class="bar-buttons">
-        <button id="info" type="button" data-i18n="limits">Limites</button>
-        <button id="lang" type="button" aria-label="Langue / Language">EN</button>
-      </div>
+      <a class="brand" href="./" aria-label="Buja Flood Twin">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="2.5" y="2.5" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M5 14.5c2.5-2.5 4.5 2.5 7 0s4.5 2.5 7 0M5 18c2.5-2.5 4.5 2.5 7 0s4.5 2.5 7 0" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+        <span data-i18n="brand">Buja Flood Twin</span>
+      </a>
+      <nav class="bar-nav" aria-label="Main">
+        <button id="layers-btn" class="bar-btn only-mobile" type="button" aria-expanded="false" aria-controls="panel" data-i18n="layers_btn">Couches</button>
+        <button id="ask" class="bar-btn" type="button" aria-expanded="false" aria-controls="chat" ><span class="long" data-i18n="ask_btn">Poser une question</span><span class="short" data-i18n="ask_short">Question</span></button>
+        <button id="limits-btn" class="bar-btn" type="button" data-i18n="limits">Limites</button>
+        <button id="lang" class="bar-btn mono" type="button" data-i18n-aria="lang_label">EN</button>
+      </nav>
     </header>
 
-    <main id="map" aria-label="Carte"></main>
+    <div id="stage">
+      <aside id="panel" class="panel" aria-label="Couches">
+        <div id="panel-body" class="panel-body"></div>
+      </aside>
+      <main id="map" role="region" data-i18n-aria="map_label" tabindex="-1"></main>
+      <p id="loading" class="loading mono" role="status"></p>
 
-    <aside id="panel" class="panel" aria-label="Panneau d'information">
-      <button id="sheet" class="sheet-handle" type="button" aria-expanded="true" data-i18n-aria="panel_toggle">
-        <span class="handle-bar"></span>
-      </button>
-      <div id="panel-body" class="panel-body"></div>
-    </aside>
+      <section id="chat" class="chat" aria-labelledby="chat-title" hidden>
+        <div class="chat-head">
+          <h2 id="chat-title" class="label"></h2>
+          <button id="chat-clear" class="link-btn" type="button"></button>
+          <button id="chat-close" class="icon-btn" type="button">✕</button>
+        </div>
+        <div id="chat-log" class="chat-log" role="log" aria-live="polite"></div>
+        <div id="chat-chips" class="chips"></div>
+        <form id="chat-form" class="chat-form">
+          <label class="sr" for="chat-input" data-i18n="chat_title">Poser une question</label>
+          <textarea id="chat-input" rows="2" maxlength="600"></textarea>
+          <button id="chat-send" class="send" type="submit"></button>
+        </form>
+        <p id="chat-note" class="chat-note"></p>
+      </section>
+    </div>
 
-    <dialog id="drawer" class="drawer" aria-labelledby="drawer-title">
-      <div class="drawer-head">
-        <h2 id="drawer-title" data-i18n="limits_title">Limites et sources</h2>
-        <button id="drawer-close" type="button" data-i18n-aria="close">✕</button>
+    <footer class="collar">
+      <p id="collar-caption" class="collar-caption"></p>
+      <p id="collar-readout" class="collar-readout" aria-hidden="true"></p>
+      <p class="collar-meta"><span id="collar-sources"></span> <span class="collar-sep">/</span> <span id="collar-version"></span></p>
+    </footer>
+
+    <dialog id="limits" class="limits" aria-labelledby="limits-title">
+      <div class="limits-head">
+        <h2 id="limits-title" data-i18n="limits_title">Limites et sources</h2>
+        <button id="limits-close" class="icon-btn" type="button" data-i18n-aria="close">✕</button>
       </div>
-      <div id="drawer-body" class="drawer-body"></div>
+      <div id="limits-body" class="limits-body"></div>
     </dialog>
 
-    <div id="toast" class="toast" role="status" hidden></div>
+    <section id="summary" class="sr" aria-live="polite"></section>
     <noscript>Cette carte nécessite JavaScript. / This map needs JavaScript.</noscript>
     <script type="module" src="/src/main.ts"></script>
   </body>

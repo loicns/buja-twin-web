@@ -13,9 +13,12 @@ export interface Scenario {
   lake_stage_m_egm2008: number;
   stats: { wet_km2_gt_0p1m: number; wet_km2_gt_0p5m: number; max_depth_m: number };
 }
+export interface ClassDef { min: number; max: number | null; colour: string }
 export interface Catalog {
   version: string;
   bounds_4326: [number, number, number, number];
+  depth_classes: ClassDef[];
+  vegetation: { trees: number; canopy_km2_ge_2m: number; canopy_classes: ClassDef[] };
   scenarios: Scenario[];
 }
 export interface ScenarioExposure {
@@ -77,9 +80,9 @@ export function parseCsv(text: string): Record<string, string>[] {
   return body.map((r) => Object.fromEntries(head.map((h, i) => [h, r[i] ?? ""])));
 }
 
-export async function loadRelease(): Promise<Release> {
-  // Never hard-code a version: current.json names the live release.
-  const { current } = await getJson<{ current: string }>(`${DATA_BASE}/current.json`);
+export async function loadRelease(pin: string | null = null): Promise<Release> {
+  // Never hard-code a version: current.json names the live release. A link may pin one (?release=v...).
+  const current = pin ?? (await getJson<{ current: string }>(`${DATA_BASE}/current.json`)).current;
   const base = `${DATA_BASE}/${current}`;
   const [catalog, summary, zonesCsv, validation] = await Promise.all([
     getJson<Catalog>(`${base}/catalog.json`),
