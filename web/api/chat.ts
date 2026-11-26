@@ -14,7 +14,7 @@ interface Env {
 }
 interface InMsg { role: "user" | "model"; content: string }
 
-const DEFAULT_MODELS = "gemini-3.8-flash,gemini-flash-latest,gemini-3.1-flash-lite";
+const DEFAULT_MODELS = "gemini-3.1-flash-lite,gemini-flash-lite-latest,gemini-3.8-flash"; // lite models first: fast, and enough for grounded short answers
 const DEFAULT_DATA = "https://pub-7368a1bf7f2b44898e1f5028f7fdb733.r2.dev";
 const MAX_BODY = 8_000, MAX_MSGS = 8, MAX_CHARS = 600;
 
