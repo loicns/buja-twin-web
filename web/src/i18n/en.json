@@ -189,5 +189,10 @@
  "chat_too_long": "Question too long.",
  "chat_you": "You",
  "chat_ai": "AI assistant",
- "ask_short": "Ask"
+ "ask_short": "Ask",
+ "caveat_short": "Modelled, not observed. Not a forecast or an official warning.",
+ "sec_top": "Most affected areas",
+ "sec_more": "View and quick preview",
+ "sec_depth": "Water depth",
+ "depth_note": "Buildings use the same colours (maximum depth under the footprint). Grey: under 0.1 m."
 }

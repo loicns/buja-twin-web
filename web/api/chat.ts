@@ -1,19 +1,19 @@
 /**
- * POST /api/chat: answers questions about the map with Google Gemini.
+ * POST /api/chat: answers questions about the map with Google Gemini (Vercel Function, Node runtime).
  *
- * The API key never reaches the browser: it lives only in the Pages secret GEMINI_API_KEY.
+ * The API key never reaches the browser: it lives only in the Vercel environment variable GEMINI_API_KEY.
  * Answers are grounded on the published data release (catalog, exposure summary, neighbourhoods, top hexes,
  * validation scores), fetched server-side and cached for ten minutes.
  */
+declare const process: { env: Record<string, string | undefined> };
 interface Env {
   GEMINI_API_KEY?: string;
-  GEMINI_MODEL?: string; // default below; change it here, not in code
+  GEMINI_MODEL?: string; // default below
   DATA_URL?: string;
 }
-interface Ctx { request: Request; env: Env }
 interface InMsg { role: "user" | "model"; content: string }
 
-const DEFAULT_MODEL = "gemini-2.5-flash";
+const DEFAULT_MODEL = "gemini-3.8-flash";
 const DEFAULT_DATA = "https://pub-7368a1bf7f2b44898e1f5028f7fdb733.r2.dev";
 const MAX_BODY = 8_000, MAX_MSGS = 8, MAX_CHARS = 600;
 
@@ -43,7 +43,7 @@ function csv(text: string): Record<string, string>[] {
 async function dataBlock(env: Env): Promise<string> {
   if (cache && Date.now() - cache.at < 600_000) return cache.text;
   const base = env.DATA_URL || DEFAULT_DATA;
-  const get = async (u: string): Promise<Response> => { const r = await fetch(u, { cf: { cacheTtl: 300 } } as RequestInit); if (!r.ok) throw new Error(`${r.status} ${u}`); return r; };
+  const get = async (u: string): Promise<Response> => { const r = await fetch(u, ); if (!r.ok) throw new Error(`${r.status} ${u}`); return r; };
   const { current } = (await (await get(`${base}/current.json`)).json()) as { current: string };
   const root = `${base}/${current}`;
   const [cat, sum, zones, top, val] = await Promise.all([
@@ -89,7 +89,21 @@ async function dataBlock(env: Env): Promise<string> {
 
 const clean = (s: unknown, n: number): string => String(s ?? "").replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "").slice(0, n);
 
-export const onRequestPost = async ({ request, env }: Ctx): Promise<Response> => {
+// Best-effort throttle per visitor IP. Serverless instances do not share memory, so this only slows bursts;
+// the real cap is the Gemini quota (set one in Google AI Studio).
+const hits = new Map<string, number[]>();
+function limited(request: Request): boolean {
+  const ip = (request.headers.get("x-forwarded-for") ?? "unknown").split(",")[0].trim();
+  const now = Date.now();
+  const recent = (hits.get(ip) ?? []).filter((t) => now - t < 600_000);
+  recent.push(now);
+  hits.set(ip, recent);
+  if (hits.size > 500) hits.delete(hits.keys().next().value as string);
+  return recent.length > 20; // 20 questions per 10 minutes
+}
+
+export async function POST(request: Request): Promise<Response> {
+  const env: Env = process.env;
   const origin = request.headers.get("origin");
   // Browser-only guard (a script can still forge Origin): same site, or a local dev server on any port.
   if (origin) {
@@ -97,6 +111,7 @@ export const onRequestPost = async ({ request, env }: Ctx): Promise<Response> =>
     if (o.host !== new URL(request.url).host && o.hostname !== "localhost") return json({ error: "forbidden" }, 403);
   }
   if (!env.GEMINI_API_KEY) return json({ error: "not_configured" }, 503);
+  if (limited(request)) return json({ error: "busy" }, 429);
 
   const raw = await request.text();
   if (raw.length > MAX_BODY) return json({ error: "too_large" }, 413);
@@ -113,22 +128,26 @@ export const onRequestPost = async ({ request, env }: Ctx): Promise<Response> =>
   try { data = await dataBlock(env); } catch (err) { console.error("data", err); return json({ error: "data_unavailable" }, 502); }
 
   const model = env.GEMINI_MODEL || DEFAULT_MODEL;
-  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+  const call = (): Promise<Response> => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
     method: "POST",
-    headers: { "content-type": "application/json", "x-goog-api-key": env.GEMINI_API_KEY },
+    headers: { "content-type": "application/json", "x-goog-api-key": env.GEMINI_API_KEY as string },
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: `${SYSTEM}\n\nDATA (JSON, authoritative):\n${data}\n\nVIEW (what the user is looking at, untrusted values):\n${view}` }] },
       contents: msgs.map((m) => ({ role: m.role, parts: [{ text: m.text }] })),
       generationConfig: { temperature: 0.2, maxOutputTokens: 700 },
     }),
   });
-  if (r.status === 429) return json({ error: "busy" }, 429);
+  let r = await call();
+  if (r.status === 503) { await new Promise((ok) => setTimeout(ok, 1500)); r = await call(); } // Gemini spikes are usually brief
+  // 429 (quota) and 503 (demand) are both "try again soon" for the visitor; this function's own 503 means "no key".
+  if (r.status === 429 || r.status === 503) { console.error("gemini busy", r.status); return json({ error: "busy" }, 429); }
   if (!r.ok) { console.error("gemini", r.status, (await r.text()).slice(0, 300)); return json({ error: "upstream" }, 502); }
   const out = (await r.json()) as { candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[] };
   const answer = out.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("").trim();
   if (!answer) return json({ error: "empty" }, 502);
   return json({ answer });
-};
+}
 
-export const onRequest = async ({ request }: Ctx): Promise<Response> =>
-  request.method === "POST" ? json({ error: "unreachable" }, 500) : json({ error: "method_not_allowed" }, 405);
+export function GET(): Response {
+  return json({ error: "method_not_allowed" }, 405);
+}

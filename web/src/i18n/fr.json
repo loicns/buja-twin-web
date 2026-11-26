@@ -189,5 +189,10 @@
  "chat_too_long": "Question trop longue.",
  "chat_you": "Vous",
  "chat_ai": "Assistant IA",
- "ask_short": "Question"
+ "ask_short": "Question",
+ "caveat_short": "Modélisé, pas observé. Ni prévision, ni avertissement officiel.",
+ "sec_top": "Zones les plus touchées",
+ "sec_more": "Vue et aperçu rapide",
+ "sec_depth": "Profondeur d'eau",
+ "depth_note": "Les bâtiments reprennent ces couleurs (profondeur maximale sous l'emprise). Gris : moins de 0,1 m."
 }

@@ -1,5 +1,7 @@
 *.local
 .dev.vars
+.env.local
+.vercel/
 .wrangler/
 dist/
 node_modules/

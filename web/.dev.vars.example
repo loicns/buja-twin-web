@@ -1,7 +1,0 @@
-# Copy this file to web/.dev.vars and paste your key after the equals sign (no quotes, no spaces).
-# .dev.vars is git-ignored. The key is read only by the server-side function in functions/api/chat.ts.
-# Never put it in a VITE_ variable or in any file that is bundled into the web page.
-GEMINI_API_KEY=
-
-# Optional: a different Gemini model name (check the current list in Google AI Studio).
-# GEMINI_MODEL=gemini-2.5-flash

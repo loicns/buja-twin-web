@@ -21,6 +21,7 @@ const flatStart = (navigator.hardwareConcurrency ?? 8) < 4 || !hasWebGL2() || !!
 
 async function main(): Promise<void> {
   document.addEventListener("securitypolicyviolation", (e) => console.warn("CSP blocked:", e.effectiveDirective, e.blockedURI));
+  if (new URLSearchParams(location.search).has("embed")) document.documentElement.classList.add("embed", "embed-on");
   applyStatic();
   const loading = $("loading");
   loading.textContent = t("loading_data");
@@ -56,6 +57,7 @@ async function main(): Promise<void> {
       scenario: (id) => update({ ...st, scenario: id }),
       layer: (id, on) => update({ ...st, layers: { ...st.layers, [id]: { ...st.layers[id], on } } }),
       opacity: (id, v) => { st = { ...st, layers: { ...st.layers, [id]: { ...st.layers[id], opacity: v } } }; api.apply(st); },
+      limits: () => dialog.showModal(),
       view3D: (on) => { st = { ...st, threeD: on }; api.set3D(on, st); panel.refresh(st); history.replaceState(null, "", toUrl(st, api.view())); },
     }, previewSection(api));
     api.localize(t);

@@ -10,6 +10,7 @@ export interface PanelHandlers {
   layer(id: LayerId, on: boolean): void;
   opacity(id: LayerId, v: number): void;
   view3D(on: boolean): void;
+  limits(): void;
 }
 export interface Panel { refresh(st: AppState): void }
 
@@ -20,8 +21,9 @@ function tag(basis: Basis): HTMLElement {
   return h("span", { class: "tag", "data-basis": basis, title: t(`st_${basis}`) }, sq, t(`st_${basis}`));
 }
 
+const dec = (v: number): number => (Number.isInteger(v) ? 0 : 1);
 const range = (c: ClassDef): string =>
-  c.max === null ? t("range_over", { a: nf(c.min, 1) }) : t("range_to", { a: nf(c.min, 1), b: nf(c.max, 1) });
+  c.max === null ? t("range_over", { a: nf(c.min, dec(c.min)) }) : t("range_to", { a: nf(c.min, dec(c.min)), b: nf(c.max, dec(c.max)) });
 const swatch = (colour: string, label: string): HTMLElement => {
   const sw = h("span", { class: "sw", "aria-hidden": "true" });
   sw.style.background = colour;
@@ -51,7 +53,6 @@ export function buildPanel(root: HTMLElement, release: Release, st0: AppState, h
   const group = h("div", { class: "segs", role: "radiogroup", "aria-label": t("scenarios_aria") }, ...radios);
   const detail = h("p", { class: "mono-line" });
   const stats = h("dl", { class: "stats" });
-  const compare = h("table", { class: "cmp" });
 
   // --- layers ----------------------------------------------------------------------------------
   const rows = new Map<LayerId, { li: HTMLElement; box: HTMLInputElement; range: HTMLInputElement; out: HTMLOutputElement; op: HTMLElement }>();
@@ -81,21 +82,27 @@ export function buildPanel(root: HTMLElement, release: Release, st0: AppState, h
   });
   const viewNote = h("p", { class: "note" });
 
+  const depthLegend = h("div", { class: "depth-strip" });
   const legend = h("div", { class: "legend", "aria-label": t("legend_title_aria") });
-  const bars = h("ul", { class: "bars" });
+  const bars = h("ol", { class: "top" });
+  const limitsBtn = h("button", { type: "button", class: "inline-link" }, t("limits"));
+  limitsBtn.addEventListener("click", hd.limits);
+
+  const fold = (title: string, ...kids: Node[]): HTMLElement =>
+    h("details", { class: "fold" }, h("summary", {}, title), h("div", { class: "fold-body" }, ...kids));
 
   const foot = h("div", { class: "foot" },
     h("a", { href: CODE_URL, target: "_blank", rel: "noopener" }, t("d_code")),
     FEEDBACK_URL ? h("a", { href: FEEDBACK_URL, target: "_blank", rel: "noopener" }, t("feedback")) : null);
 
   root.replaceChildren(
-    h("p", { class: "caveat" }, t("caveat")),
-    h("section", {}, h("h2", { class: "label" }, t("sec_scenario")), group, detail, stats, compare),
-    h("section", {}, h("h2", { class: "label" }, t("sec_layers")), ...layerGroups,
-      h("div", { class: "lgroup" }, h("h3", { class: "label" }, t("sec_view")), h("div", { class: "segs segs-2", role: "radiogroup", "aria-label": t("sec_view") }, ...view), viewNote)),
-    h("section", {}, h("h2", { class: "label" }, t("sec_legend")), legend),
-    h("section", {}, h("h2", { class: "label" }, t("sec_neigh")), h("p", { class: "note" }, t("neigh_title")), bars, h("p", { class: "note" }, t("neigh_note"))),
-    ...extra, foot);
+    h("p", { class: "caveat" }, t("caveat_short"), " ", limitsBtn),
+    h("section", {}, h("h2", { class: "label" }, t("sec_scenario")), group, detail, stats),
+    h("section", {}, h("h2", { class: "label" }, t("sec_depth")), depthLegend),
+    h("section", {}, h("h2", { class: "label" }, t("sec_top")), bars),
+    fold(t("sec_layers"), ...layerGroups, legend),
+    fold(t("sec_more"), h("div", { class: "segs segs-2", role: "radiogroup", "aria-label": t("sec_view") }, ...view), viewNote, ...extra),
+    foot);
 
   function refresh(st: AppState): void {
     const sc = release.catalog.scenarios.find((s) => s.id === st.scenario)!;
@@ -107,12 +114,6 @@ export function buildPanel(root: HTMLElement, release: Release, st0: AppState, h
       ...stat(t("stat_wet"), `${nf(sc.stats.wet_km2_gt_0p5m, 1)} ${t("km2")}`),
       ...stat(t("stat_buildings"), `${t("about")} ${nf(Math.round(ex.buildings_ge_0p5m / 100) * 100)}`),
       ...stat(t("stat_people"), `${t("about")} ${people(ex.people_ge_0p5m)}`));
-    compare.replaceChildren(
-      h("thead", {}, h("tr", {}, h("th", {}, t("col_scenario")), h("th", {}, t("col_buildings")), h("th", {}, t("col_people")))),
-      h("tbody", {}, ...SCENARIO_IDS.map((id) => h("tr", id === st.scenario ? { class: "on" } : {},
-        h("th", { scope: "row" }, id.toUpperCase()), h("td", {}, nf(Math.round(release.summary[id].buildings_ge_0p5m / 100) * 100)),
-        h("td", {}, people(release.summary[id].people_ge_0p5m))))));
-
     for (const [id, r] of rows) {
       r.box.checked = st.layers[id].on;
       r.range.value = String(Math.round(st.layers[id].opacity * 100));
@@ -126,24 +127,22 @@ export function buildPanel(root: HTMLElement, release: Release, st0: AppState, h
     }
     viewNote.textContent = st.threeD ? t("view_note_3d") : t("view_note_2d");
 
-    // legend: visible layers only
+    // primary legend: depth classes, shown while flood or buildings are on
     const L = st.layers;
-    const blocks: HTMLElement[] = [];
-    const block = (title: string, basis: Basis, ...kids: (Node | null)[]): void => {
-      blocks.push(h("div", { class: "lg" }, h("div", { class: "lg-head" }, h("span", { class: "lg-title" }, title), tag(basis)), ...kids));
-    };
-    const depthList = (): HTMLElement => h("ul", { class: "sws" }, ...depth.map((c) => swatch(c.colour, range(c))));
-    if (L.flood.on) block(`${t("lg_flood")} · ${st.scenario.toUpperCase()}`, "modelled", depthList());
-    if (L.buildings.on) block(t("lg_buildings"), "modelled", h("ul", { class: "sws" }, swatch("#c3cbd6", t("lg_dry")), ...depth.map((c) => swatch(c.colour, range(c)))));
-    if (L.canopy.on) block(t("lg_canopy"), "modelled", h("ul", { class: "sws" }, ...veg.canopy_classes.map((c) => swatch(c.colour, c.max === null ? t("canopy_over", { a: nf(c.min) }) : t("range_canopy", { a: nf(c.min), b: nf(c.max) })))));
-    if (L.trees.on) block(t("lg_trees"), "modelled", h("p", { class: "note" }, t("trees_hint")));
-    if (L.priority.on) block(t("lg_priority"), "assumed", h("div", { class: "ramp", "aria-hidden": "true" }), h("div", { class: "ramp-labels" }, h("span", {}, t("lg_low")), h("span", {}, t("lg_high"))), h("p", { class: "note" }, t("lg_priority_note")));
-    if (L.zones.on) block(t("lg_zones"), "assumed", h("ul", { class: "sws" }, h("li", {}, h("span", { class: "dash", "aria-hidden": "true" }), t("lg_zones"))));
-    if (L.rivers.on) block(t("lg_rivers"), "modelled", h("ul", { class: "sws" }, h("li", {}, h("span", { class: "line", "aria-hidden": "true" }), t("lg_rivers"))));
-    if (L.bridges.on) block(t("lg_bridges"), "observed", h("ul", { class: "sws" }, h("li", {}, h("span", { class: "dot", "aria-hidden": "true" }), t("lg_bridges"))));
-    legend.replaceChildren(...(blocks.length ? blocks : [h("p", { class: "note" }, t("legend_empty"))]));
+    depthLegend.replaceChildren(...(L.flood.on || L.buildings.on
+      ? [h("ul", { class: "sws depth" }, ...depth.map((c) => swatch(c.colour, range(c)))), h("p", { class: "note" }, t("depth_note"))]
+      : [h("p", { class: "note" }, t("legend_empty"))]));
 
-    const top = [...release.zones].sort((a, b) => b.people05[st.scenario] - a.people05[st.scenario]).slice(0, 8);
+    // other visible layers, inside the Layers fold
+    const blocks: HTMLElement[] = [];
+    const block = (title: string, ...kids: (Node | null)[]): void => { blocks.push(h("div", { class: "lg" }, h("div", { class: "lg-head" }, h("span", { class: "lg-title" }, title)), ...kids)); };
+    if (L.canopy.on) block(t("lg_canopy"), h("ul", { class: "sws" }, ...veg.canopy_classes.map((c) => swatch(c.colour, c.max === null ? t("canopy_over", { a: nf(c.min) }) : t("range_canopy", { a: nf(c.min), b: nf(c.max) })))));
+    if (L.trees.on) block(t("lg_trees"), h("p", { class: "note" }, t("trees_hint")));
+    if (L.priority.on) block(t("lg_priority"), h("div", { class: "ramp", "aria-hidden": "true" }), h("div", { class: "ramp-labels" }, h("span", {}, t("lg_low")), h("span", {}, t("lg_high"))), h("p", { class: "note" }, t("lg_priority_note")));
+    if (L.zones.on) block(t("lg_zones"));
+    legend.replaceChildren(...blocks);
+
+    const top = [...release.zones].sort((a, b) => b.people05[st.scenario] - a.people05[st.scenario]).slice(0, 5);
     const max = Math.max(...top.map((z) => z.people05[st.scenario]), 1);
     bars.replaceChildren(...top.map((z) => {
       const fill = h("span", { class: "bar-fill" });

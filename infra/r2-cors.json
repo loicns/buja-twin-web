@@ -1,9 +1,24 @@
 [
   {
-    "AllowedOrigins": ["https://buja-flood-twin.pages.dev", "http://localhost:5173"],
-    "AllowedMethods": ["GET", "HEAD"],
-    "AllowedHeaders": ["range", "if-match"],
-    "ExposeHeaders": ["etag", "content-length", "content-range"],
+    "AllowedOrigins": [
+      "https://buja.servunt.com",
+      "https://buja-flood-twin.pages.dev",
+      "https://*.vercel.app",
+      "http://localhost:5173"
+    ],
+    "AllowedMethods": [
+      "GET",
+      "HEAD"
+    ],
+    "AllowedHeaders": [
+      "range",
+      "if-match"
+    ],
+    "ExposeHeaders": [
+      "etag",
+      "content-length",
+      "content-range"
+    ],
     "MaxAgeSeconds": 86400
   }
 ]
