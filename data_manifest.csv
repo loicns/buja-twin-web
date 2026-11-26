@@ -1,11 +1,12 @@
 layer,path,bytes,sha256,licence,publish
 dem_10m,twin:02_processed/terrain/dem_hydro_enforced_10m.tif,12018274,3b794f5e19dfff22b47738115b756579243255a7b4a5d003937883f24c0db2ac,FABDEM CC BY-NC-SA 4.0,y
 buildings,twin:exports/blender_flood_twin/buildings_3d.gpkg,135753728,eec5edf709815ea1c6ad91ee6af96436016234cc1be968d3878aef915585fd12,Google Open Buildings CC BY 4.0 + OSM ODbL,y
-roads,twin:exports/blender_flood_twin/roads_transportation.gpkg,2494464,a70bcb5ba260194bd138af614aaa2fd4f0d7b3cd6323aed43cac52d750bedbf5,OSM ODbL,y
+roads,twin:exports/blender_flood_twin/roads_transportation.gpkg,2494464,a70bcb5ba260194bd138af614aaa2fd4f0d7b3cd6323aed43cac52d750bedbf5,"unverified (looks like Copernicus EMS, not OSM)",n
 rivers,twin:exports/blender_flood_twin/rivers_streams.gpkg,1527808,d9ff1dde0ab89d9190df96272c6d887dc70dac4591629dadbb77e08d6edb911f,HydroRIVERS + derived,y
 bridges,twin:exports/blender_flood_twin/critical_bridges.gpkg,98304,31f5cf28db8a7a6c0f4569b631158823998f769278c67e982563976358de1f9e,OSM ODbL,y
 admin,twin:exports/blender_flood_twin/administrative_boundaries.gpkg,176128,f79f5f73f1d0bd4c5fcddd1e5ac3b91fd4583c17a1f0bd01bb0590c2b54d9ceb,OSM ODbL,y
-chm_1m,twin:vegetation/processed/meta_chm_1m_domain.tif,28547359,3d767ede029896ed32fdca7566c657c4738ab9bfeea2d1b0388683d94f1aa6fd,Meta/WRI CC BY 4.0,n
+chm_1m,twin:vegetation/processed/meta_chm_1m_domain.tif,28547359,3d767ede029896ed32fdca7566c657c4738ab9bfeea2d1b0388683d94f1aa6fd,Meta/WRI CC BY 4.0,derived
+trees,twin:vegetation/processed/trees_detected.csv,28215462,29fb2e25b97451e5b5a049a68216a3b122025d206fb3abe8b81d007b9b9209dc,Meta/WRI CC BY 4.0 (CHM-detected),y
 worldpop,lab:01_raw/population/bdi_ppp_2020_UNadj_constrained.tif,5861544,a5d2a346aa9aa859f8d2df8ff52251e7de5467e1536848262881701f4c6bfefa,WorldPop CC BY 4.0,n
 s1,lab:04_models/sfincs/runs/rain10_lake2024/max_water_depth_10m.tif,3493289,58fb2fbf2a6c21914925188460a9bd1204e115c66ffc0c796c58a820cec73d9d,own CC BY 4.0,y
 s2,lab:04_models/sfincs/runs/cnfix_rain100_lake2024/max_water_depth_10m.tif,3990228,152c3221c6c586f88298b00698ec9286b2a42fd2cf87c68a81a8f419a3e03f6b,own CC BY 4.0,y

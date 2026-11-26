@@ -13,6 +13,7 @@ dist:
 	$(PYTHON) pipelines/exposure.py --dist $(DIST) --pop $(POP)
 	$(PYTHON) pipelines/rollups.py --dist $(DIST)
 	$(PYTHON) pipelines/collect_validation.py --dist $(DIST)
+	$(PYTHON) pipelines/vegetation.py --dist $(DIST)
 	bash pipelines/make_tiles.sh $(DIST)
 	DIST=$(DIST) $(PYTHON) -m pytest -q pipelines/tests/test_dist.py
 

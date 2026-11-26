@@ -51,7 +51,7 @@ def test_pmtiles_verify(f):
 
 def test_all_expected_pmtiles_present():
     names = {p.stem for p in pmtiles_files()}
-    assert names == {"buildings", "context", "terrain", "depth_s1", "depth_s2", "depth_s3", "hex", "zones"}
+    assert names == {"buildings", "context", "terrain", "depth_s1", "depth_s2", "depth_s3", "hex", "zones", "canopy", "trees"}
 
 
 def test_total_size_under_2gb():
@@ -91,7 +91,7 @@ def test_terrain_decodes_to_real_elevation():
     assert 769.9 <= elev.min() and elev.max() <= 1900, (elev.min(), elev.max())
 
 
-def test_depth_tiles_use_the_four_classes():
+def test_depth_tiles_use_the_five_classes():
     from PIL import Image
 
     tiles, _ = _tiles("depth_s2")
@@ -99,7 +99,7 @@ def test_depth_tiles_use_the_four_classes():
     for _, data in tiles:
         a = np.asarray(Image.open(io.BytesIO(data)).convert("RGBA"))[..., 3]
         alphas |= set(np.unique(a).tolist())
-    assert {160, 190, 215, 235} <= alphas, alphas
+    assert len(alphas & {150, 175, 195, 215, 235}) >= 4, alphas  # five navy-blue classes; a class may be absent in a mild scenario
 
 
 def _first_tile(name: str, z: int) -> dict:
@@ -145,3 +145,27 @@ def test_exposure_outputs_are_complete_and_consistent():
     assert abs(b["people"].sum() - summary["people_total"]) < 2
     top = pd.read_csv(ex / "top20_hexes.csv")
     assert len(top) == 20 and top["rank_s2"].is_monotonic_increasing and top["p_s2"].iloc[0] > 0
+
+
+def test_catalog_describes_depth_and_vegetation_classes():
+    cat = catalog()
+    assert [c["min"] for c in cat["depth_classes"]] == [0.1, 0.5, 1.5, 3.0, 5.0]
+    assert cat["vegetation"]["trees"] > 250_000 and len(cat["vegetation"]["canopy_classes"]) == 4
+
+
+def test_tree_tiles_are_light_and_numeric():
+    tiles, header = _tiles("trees")
+    assert header["min_zoom"] >= 15
+    assert max(len(d) for _, d in tiles) < 500 * 1024
+    props = _first_tile("trees", 15)["trees"]["features"][0]["properties"]
+    assert isinstance(props["h"], (int, float)) and isinstance(props["d"], (int, float))
+
+
+def test_canopy_tiles_have_four_green_classes():
+    from PIL import Image
+
+    tiles, _ = _tiles("canopy")
+    alphas = set()
+    for _, data in tiles:
+        alphas |= set(np.unique(np.asarray(Image.open(io.BytesIO(data)).convert("RGBA"))[..., 3]).tolist())
+    assert len(alphas & {170, 190, 210, 230}) >= 3, alphas

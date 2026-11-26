@@ -14,8 +14,10 @@ from rasterio.warp import transform_bounds
 
 from common import RUNS, SCENARIOS, TWIN
 
-EDGES = [0.10, 0.50, 1.50, 3.00]  # depth class edges (m)
-COLOURS = [(198, 219, 239, 160), (107, 174, 214, 190), (33, 113, 181, 215), (8, 48, 107, 235)]
+EDGES = [0.10, 0.50, 1.50, 3.00, 5.00]  # depth class edges (m): five navy-blue classes
+HEX = ["#d4e1f0", "#a6c1e2", "#6c95c9", "#3866a6", "#163d78"]
+ALPHA = [150, 175, 195, 215, 235]
+COLOURS = [(*(int(h[i:i + 2], 16) for i in (1, 3, 5)), a) for h, a in zip(HEX, ALPHA)]
 NODATA = -9999
 # The hydro-enforced DEM flattens open Lake Tanganyika at exactly 770.0 m, and SFINCS reports
 # lake stage minus 770 (about 2.5 m) over those cells. That is open water, not flooding.
@@ -87,6 +89,8 @@ def main() -> None:
 
     catalog = {"version": out.name, "crs": "EPSG:3857",
                "bounds_4326": [round(west, 5), round(south, 5), round(east, 5), round(north, 5)],
+               "depth_classes": [{"min": lo, "max": EDGES[i + 1] if i + 1 < len(EDGES) else None, "colour": HEX[i]}
+                                 for i, lo in enumerate(EDGES)],
                "stats_note": "wet areas are land cells only; open Lake Tanganyika (DEM at 770.0 m) is excluded",
                "scenarios": []}
     for sid, run_id in SCENARIOS.items():
