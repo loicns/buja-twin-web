@@ -1,7 +1,6 @@
 name: deploy-api
 on:
-  push: { branches: [main], paths: ["api/**", ".github/workflows/deploy-api.yml"] }
-  workflow_dispatch: {}
+  workflow_dispatch: {}   # manual until the AWS account, role and secrets exist; add a push trigger afterwards
 permissions: { contents: read, id-token: write }     # OIDC: GitHub proves who it is to AWS, no stored keys
 env:
   FUNCTION: buja-flood-api
