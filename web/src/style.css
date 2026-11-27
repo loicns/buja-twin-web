@@ -211,7 +211,7 @@ input[type="range"]::-moz-range-thumb { width: 12px; height: 16px; background: v
 .with-intro .loading { left: calc(var(--intro-w) + 12px); }
 .map-hint { position: absolute; z-index: 2; left: 50%; bottom: 44px; transform: translateX(-50%); min-height: var(--ctl-h); padding: 0 14px; background: var(--navy-950); color: var(--white); border: 1px solid var(--edge-dark); font-size: var(--fs-md); font-weight: 600; white-space: nowrap; transition: background var(--dur) var(--ease); }
 .map-hint:hover { background: var(--navy-800); }
-.map-hint[hidden] { display: none; }
+.map-hint[hidden], .with-intro .map-hint { display: none; }
 
 /* ---- map controls: flat rectangles --------------------------------------------------------------------------- */
 #map .maplibregl-ctrl-group { background: var(--navy-950); border: 1px solid var(--edge-dark); border-radius: 0; box-shadow: none; }
