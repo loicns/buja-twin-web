@@ -39,4 +39,14 @@ rank. Its three inputs are people, S2 depth and how often the cell floods. It sa
 ## Neighbourhoods
 
 Voronoi cells around the 77 `neighbourhood_places` points, clipped to the Mairie outline. They are approximate and
-labelled so in the app. They are not official administrative units.
+labelled so in the app. They are not official administrative units. 45 cells fall inside the outline. Each has a
+stable `id` (two places share the name Mutimbuzi; their labels carry the OSM class), a label point and a bounding box
+for the app's search and fly-to (`lon`, `lat`, `minx` ... `maxy` in `exposure_zones.csv`).
+
+## Vegetation per neighbourhood (descriptive)
+
+`canopy_pct`: share of the cell's ground under canopy 2 m or taller, from the 1 m Meta and WRI canopy height map,
+sampled 1 in 25 cells (nearest, not maximum, so the share is unbiased). `trees_ha`: CHM-detected trees per hectare (a
+lower bound under closed canopy). Median over the 45 cells: 11.9 % and 7 trees/ha; range 1.6 % (Rukaramu) to 37.1 %
+(Kiriri). Neither value is a model input or a flood-protection measure. `roughness_test_pct` is the share of the cell
+inside the synthetic roughness block described in LIMITATIONS.md.

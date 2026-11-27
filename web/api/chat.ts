@@ -64,11 +64,15 @@ async function dataBlock(env: Env): Promise<string> {
     name: z.name, buildings: +z.buildings, people: +z.people,
     people_over_0p5m: { s1: +z.people_ge_0p5m_s1, s2: +z.people_ge_0p5m_s2, s3: +z.people_ge_0p5m_s3 },
     buildings_over_0p5m: { s1: +z.buildings_ge_0p5m_s1, s2: +z.buildings_ge_0p5m_s2, s3: +z.buildings_ge_0p5m_s3 },
+    // from release v20261127; absent in older releases
+    ...(z.canopy_pct ? { canopy_share_pct_descriptive: +z.canopy_pct } : {}),
+    ...(z.roughness_test_pct ? { pct_in_synthetic_roughness_block: +z.roughness_test_pct } : {}),
   }));
   const hexes = csv(top).map((h) => ({ rank_s2: +h.rank_s2, near: h.near, buildings: +h.buildings, people: +h.people, buildings_over_0p5m_s2: +h.n_s2, people_over_0p5m_s2: +h.p_s2 }));
   const text = JSON.stringify({
     data_release: current,
-    scenarios_note: "S1 frequent storm 1-in-10-yr; S2 severe 1-in-100-yr; S3 Copernicus EMSN191 scenario 4 benchmark (very rare storm). Flood areas exclude open Lake Tanganyika.",
+    scenarios_note: "S1 frequent storm (about a 1 in 10 chance each year); S2 severe storm (1 in 100 chance each year); S3 extreme storm, the Copernicus EMSN191 scenario 4 benchmark case. Say return periods as a yearly chance, never 'once in 100 years'. Flood areas exclude open Lake Tanganyika.",
+    known_defect: "Every published run read a roughness grid holding a 4 x 4 km synthetic 'forest' test block north of the centre (Mutakura, Ntahangwa, Ngagara, about half of Buterere and Quartier Industriel). Depths there are less reliable; the runs need redoing. Say so when asked about those neighbourhoods.",
     scenarios: scen,
     totals: { buildings: sum.buildings_total, people_allocated: sum.people_total },
     neighbourhoods_approximate: zoneRows,
@@ -80,7 +84,8 @@ async function dataBlock(env: Env): Promise<string> {
       vs_sentinel1_2024: { ...val.sfincs_rain100_vs_gfm_2024, note: "Sentinel-1 saw almost no flooding in 2024 (mostly a lake rise), so this does not test storm floods" },
       surrogate_model_csi: val.surrogate, calibration: val.calibration,
     },
-    vegetation: { detected_trees: cat.vegetation?.trees, canopy_km2_over_2m: cat.vegetation?.canopy_km2_ge_2m, source: "Meta & WRI canopy height (CC BY 4.0), estimated from satellite images; no species" },
+    vegetation: { detected_trees: cat.vegetation?.trees, canopy_km2_over_2m: cat.vegetation?.canopy_km2_ge_2m, source: "Meta & WRI canopy height (CC BY 4.0), estimated from satellite images; no species",
+      note: "Descriptive only: the flood model does not use this canopy, and no run tested more or fewer trees. Never claim trees would lower these depths." },
     layers: "water depth (modelled), buildings coloured by depth (modelled), priority hexes (assumed), approximate neighbourhoods (assumed), tree canopy and detected trees (modelled), rivers (modelled), bridges (observed, OpenStreetMap), terrain hillshade (FABDEM).",
     lake_datum: "Lake level 772.50 m EGM2008 (2024 peak); a press figure near 777 m is a local gauge reading, do not mix.",
   });

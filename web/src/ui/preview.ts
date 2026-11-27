@@ -34,7 +34,8 @@ export function previewSection(api: MapApi): HTMLElement[] {
       if (src) src.updateImage({ url: png, coordinates: p.corners_4326 });
       else {
         map.addSource("preview", { type: "image", url: png, coordinates: p.corners_4326 });
-        map.addLayer({ id: "preview", type: "raster", source: "preview", paint: { "raster-opacity": 0.88, "raster-resampling": "nearest" } }, "buildings-flat");
+        map.addLayer({ id: "preview", type: "raster", source: "preview", paint: { "raster-opacity": 0.88, "raster-resampling": "nearest" } },
+          map.getLayer("buildings-flat") ? "buildings-flat" : undefined); // layers are created on first use
       }
       setMsg(p.warnings.length ? t("live_warn") : t("live_result", { km: nf(p.wet_km2_gt_0p5m, 1), max: nf(p.max_depth_m, 1) }), p.warnings.length > 0);
     } catch (err) {

@@ -16,6 +16,20 @@ Read this before quoting any number from the map.
 - **Open lake is excluded** from wet areas and tiles (see METHODS.md).
 - **People are approximate.** WorldPop 2020 shared by floor area; it can misplace people in informal areas. Round
   published counts to hundreds. Building heights are missing for some buildings and capped at 10 storeys.
-- **Neighbourhoods are approximate** Voronoi cells, not administrative boundaries.
+- **Neighbourhoods are approximate** Voronoi cells, not administrative boundaries. Releases before v20261127 keyed them
+  by name, so the two cells named Mutimbuzi (a town and a village) were merged and each was shown with the combined
+  totals (1,499 people counted twice in S2). They now have ids and labels "Mutimbuzi (town)" / "Mutimbuzi (village)".
+- **Synthetic roughness block (found 2026-11-26).** Every published run (S1 to S3, and the surrogate's training runs) read
+  its Manning roughness from the lab's `02_processed/vegetation/mannings_n_10m_canopy.tif`, which
+  `scripts/compute_canopy_roughness.py` made in *synthetic* mode: a 4 x 4 km square of made-up 8 m "forest"
+  (n of about 0.12 to 0.13 instead of 0.035) at about 29.340-29.376 E, 3.326-3.363 S. It covers Mutakura and Ntahangwa,
+  most of Ngagara and Bukirasazi, and about half of Buterere and Quartier Industriel. Neighbourhoods touching it hold
+  about 63 % of the S2 people in more than 0.5 m of water. Depths there are less reliable; the app flags each
+  neighbourhood's overlap (`roughness_test_pct`, from release v20261127). The runs must be redone with a roughness map
+  built from the measured canopy. Uniform Manning x0.7 / x1.3 changed flooded area by -10 % / +7 %, which bounds the
+  city-wide effect, not the local one.
+- **The measured canopy is not in the flood model.** The canopy and tree layers, and the canopy share per neighbourhood,
+  are descriptive. Nothing here shows that more trees would lower these depths: no run has changed vegetation, and most
+  modelled flooding comes from river inflows draining about 1,000 km2 of hills outside the canopy map.
 - **S1 predates the curve-number fix** applied to S2 and S3 (under 1 % effect where tested).
 - **FABDEM terrain is non-commercial** (CC BY-NC-SA 4.0), so this demo is a non-commercial research demo.

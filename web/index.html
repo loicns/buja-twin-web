@@ -3,9 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="description" content="Bujumbura modelled flood map: water depth, exposed buildings, priority areas, canopy. Research demo, not an official warning." />
+    <meta name="description" content="Bujumbura modelled flood map: water depth, exposed buildings and people by neighbourhood, tree canopy. Research demo, not an official warning." />
     <meta name="theme-color" content="#071426" />
     <title>Bujumbura – carte des inondations modélisées</title>
+    <!-- data and basemap hosts: open the connections while the script downloads -->
+    <link rel="preconnect" href="https://pub-7368a1bf7f2b44898e1f5028f7fdb733.r2.dev" crossorigin />
+    <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin />
+    <script src="/boot.js"></script>
   </head>
   <body>
     <a class="skip" href="#map" data-i18n="skip">Aller à la carte</a>
@@ -14,26 +18,49 @@
         <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="2.5" y="2.5" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M5 14.5c2.5-2.5 4.5 2.5 7 0s4.5 2.5 7 0M5 18c2.5-2.5 4.5 2.5 7 0s4.5 2.5 7 0" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
         <span data-i18n="brand">Buja Flood Twin</span>
       </a>
+      <button id="status" class="status" type="button" data-i18n-aria="status_aria"><span class="status-sq" aria-hidden="true"></span><span class="long" data-i18n="status_chip">Modélisé · non calibré</span><span class="short" data-i18n="status_chip_short">Modélisé</span></button>
       <nav class="bar-nav" aria-label="Main">
-        <button id="layers-btn" class="bar-btn only-mobile" type="button" aria-expanded="false" aria-controls="panel" data-i18n="layers_btn">Couches</button>
-        <button id="ask" class="bar-btn" type="button" aria-expanded="false" aria-controls="chat" ><span class="long" data-i18n="ask_btn">Poser une question</span><span class="short" data-i18n="ask_short">Question</span></button>
-        <button id="limits-btn" class="bar-btn" type="button" data-i18n="limits">Limites</button>
+        <button id="share" class="bar-btn" type="button" data-i18n-title="share_title"><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 9.5 9.5 6.5M7 4.5l1.5-1.5a2.5 2.5 0 0 1 3.5 3.5L10.5 8M9 11.5 7.5 13A2.5 2.5 0 0 1 4 9.5L5.5 8" fill="none" stroke="currentColor" stroke-width="1.4"/></svg><span class="long" data-i18n="share">Partager</span></button>
+        <button id="ask" class="bar-btn" type="button" aria-expanded="false" aria-controls="chat"><span class="long" data-i18n="ask_btn">Poser une question</span><span class="short" data-i18n="ask_short">Question</span></button>
         <button id="lang" class="bar-btn mono" type="button" data-i18n-aria="lang_label">EN</button>
       </nav>
     </header>
 
-    <div id="stage">
-      <aside id="panel" class="panel" aria-label="Couches">
+    <main id="stage">
+      <!-- First-visit cover: plain HTML, readable before any script or data has loaded -->
+      <section id="intro" class="intro" aria-labelledby="intro-title">
+        <div class="intro-body">
+          <p class="intro-eyebrow" data-i18n="intro_eyebrow">Démonstration de recherche · Bujumbura</p>
+          <h1 id="intro-title" data-i18n="intro_title">Où l'eau pourrait monter lors d'un orage à Bujumbura</h1>
+          <p class="intro-lede" data-i18n="intro_lede">Trois orages simulés, du fréquent à l'extrême : hauteur d'eau, bâtiments et personnes concernés, quartier par quartier.</p>
+          <p class="intro-label" data-i18n="intro_numbers">Orage sévère · 1 chance sur 100 par an</p>
+          <dl class="intro-figs" aria-busy="true">
+            <div><dt data-i18n="intro_people">personnes dans des bâtiments à plus de 0,5 m d'eau</dt><dd id="fig-people">—</dd></div>
+            <div><dt data-i18n="intro_buildings">bâtiments à plus de 0,5 m d'eau</dt><dd id="fig-buildings">—</dd></div>
+            <div><dt data-i18n="intro_land">de terres sous plus de 0,5 m d'eau</dt><dd id="fig-land">—</dd></div>
+          </dl>
+          <p class="intro-honest" data-i18n="intro_honest">Ce sont des résultats de modèle, pas des observations.</p>
+          <p class="intro-warn" data-i18n="intro_warn">Ceci n'est pas une alerte. Pour les alertes officielles : IGEBU et Protection civile du Burundi.</p>
+          <p class="intro-method" data-i18n="intro_method">SFINCS 20 m · Google Open Buildings · WorldPop 2020</p>
+        </div>
+        <div class="intro-actions">
+          <button id="intro-go" class="btn-primary" type="button"><span data-i18n="intro_go">Explorer la carte</span> <span aria-hidden="true">→</span></button>
+          <button id="intro-how" class="btn-link" type="button" data-i18n="intro_how">Comment c'est fait</button>
+        </div>
+      </section>
+
+      <aside id="panel" class="panel" data-i18n-aria="sec_layers">
         <div id="panel-body" class="panel-body"></div>
       </aside>
-      <main id="map" role="region" data-i18n-aria="map_label" tabindex="-1"></main>
+      <div id="map" tabindex="-1"></div>
       <p id="loading" class="loading mono" role="status"></p>
+      <p id="toast" class="toast" role="status" hidden></p>
 
       <section id="chat" class="chat" aria-labelledby="chat-title" hidden>
         <div class="chat-head">
           <h2 id="chat-title" class="label"></h2>
           <button id="chat-clear" class="link-btn" type="button"></button>
-          <button id="chat-close" class="icon-btn" type="button">✕</button>
+          <button id="chat-close" class="icon-btn" type="button"><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5"/></svg></button>
         </div>
         <div id="chat-log" class="chat-log" role="log" aria-live="polite"></div>
         <div id="chat-chips" class="chips"></div>
@@ -44,24 +71,25 @@
         </form>
         <p id="chat-note" class="chat-note"></p>
       </section>
-    </div>
+    </main>
 
     <footer class="collar">
       <p id="collar-caption" class="collar-caption"></p>
       <p id="collar-readout" class="collar-readout" aria-hidden="true"></p>
-      <p class="collar-meta"><span id="collar-sources"></span> <span class="collar-sep">/</span> <span id="collar-version"></span></p>
+      <p class="collar-meta"><button id="collar-sources" class="collar-link" type="button"></button> <span class="collar-sep">/</span> <span id="collar-version"></span></p>
     </footer>
 
     <dialog id="limits" class="limits" aria-labelledby="limits-title">
       <div class="limits-head">
         <h2 id="limits-title" data-i18n="limits_title">Limites et sources</h2>
-        <button id="limits-close" class="icon-btn" type="button" data-i18n-aria="close">✕</button>
+        <button id="limits-close" class="icon-btn" type="button" data-i18n-aria="close"><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5"/></svg></button>
       </div>
       <div id="limits-body" class="limits-body"></div>
     </dialog>
 
-    <section id="summary" class="sr" aria-live="polite"></section>
-    <noscript>Cette carte nécessite JavaScript. / This map needs JavaScript.</noscript>
+    <section id="summary" class="sr"></section>
+    <p id="announce" class="sr" role="status"></p>
+    <noscript><p class="noscript">Cette carte nécessite JavaScript. / This map needs JavaScript.</p></noscript>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

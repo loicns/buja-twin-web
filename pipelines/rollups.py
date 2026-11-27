@@ -29,6 +29,12 @@ def neighbourhood_zones() -> gpd.GeoDataFrame:
     zones["geometry"] = zones.geometry.intersection(outline)
     zones = zones[~zones.geometry.is_empty].reset_index(drop=True)
     zones["name"] = zones["name"].fillna("unnamed")
+    # Two OSM places share a name (a town and a village called Mutimbuzi): keep the cells apart, with a stable
+    # id and a readable label, so their buildings and people are not merged and then counted twice.
+    dup = zones["name"].duplicated(keep=False)
+    zones.loc[dup, "name"] = zones.loc[dup, "name"] + " (" + zones.loc[dup, "fclass"].astype(str) + ")"
+    zones = zones.sort_values(["name"]).reset_index(drop=True)
+    zones.insert(0, "id", range(1, len(zones) + 1))
     zones["area_km2"] = (zones.geometry.area / 1e6).round(2)
     return zones
 
@@ -49,8 +55,8 @@ def main() -> None:
 
     # neighbourhoods
     zones = neighbourhood_zones()
-    j = gpd.sjoin(pts, zones[["name", "geometry"]], predicate="within", how="left")
-    b["zone"] = j.groupby(level=0)["name"].first().reindex(b.index)
+    j = gpd.sjoin(pts, zones[["id", "geometry"]], predicate="within", how="left")
+    b["zone"] = j.groupby(level=0)["id"].first().reindex(b.index)
     cols = {"bid": "buildings", "people": "people"}
     for s in SIDS:
         b[f"n_{s}"] = (b[f"c_{s}"] >= 2).astype(int)
@@ -60,10 +66,16 @@ def main() -> None:
     agg = b.dropna(subset=["zone"]).groupby("zone").agg(
         {"bid": "count", "people": "sum", **{f"n_{s}": "sum" for s in SIDS}, **{f"p_{s}": "sum" for s in SIDS}}
     ).rename(columns=cols).round(0).astype(int)
-    zones = zones.merge(agg, left_on="name", right_index=True, how="left").fillna(0)
+    agg.index = agg.index.astype(int)
+    zones = zones.merge(agg, left_on="id", right_index=True, how="left").fillna(0)
+    z4326 = zones.to_crs(4326)
+    # where the app flies to when a neighbourhood is picked: label point (inside the cell) and bounding box
+    rep = z4326.geometry.representative_point()
+    zones["lon"], zones["lat"] = rep.x.round(5), rep.y.round(5)
+    bb = z4326.geometry.bounds.round(5)
+    zones["minx"], zones["miny"], zones["maxx"], zones["maxy"] = bb["minx"], bb["miny"], bb["maxx"], bb["maxy"]
     zones.drop(columns="geometry").sort_values("people_ge_0p5m_s2", ascending=False).to_csv(
         out / "exposure_zones.csv", index=False)
-    z4326 = zones.to_crs(4326)
     z4326["geometry"] = z4326.geometry.simplify(0.00002)
     z4326.to_file(out / "zones.geojson", driver="GeoJSON")
 

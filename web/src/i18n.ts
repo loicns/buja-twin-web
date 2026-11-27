@@ -22,6 +22,7 @@ export function applyStatic(): void {
   document.documentElement.lang = lang;
   document.querySelectorAll<HTMLElement>("[data-i18n]").forEach((el) => { el.textContent = t(el.dataset.i18n!); });
   document.querySelectorAll<HTMLElement>("[data-i18n-aria]").forEach((el) => el.setAttribute("aria-label", t(el.dataset.i18nAria!)));
+  document.querySelectorAll<HTMLElement>("[data-i18n-title]").forEach((el) => { el.title = t(el.dataset.i18nTitle!); });
   document.title = t("doc_title");
   const btn = document.getElementById("lang");
   if (btn) btn.textContent = lang === "fr" ? "EN" : "FR";

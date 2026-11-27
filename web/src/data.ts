@@ -29,11 +29,21 @@ export interface ScenarioExposure {
 }
 export type Summary = Record<ScenarioId, ScenarioExposure> & { buildings_total: number; people_total: number };
 export interface Zone {
+  /** Stable id from the release (null in releases before v20261127, which keyed zones by name). */
+  id: number | null;
   name: string;
   buildings: number;
   people: number;
   buildings05: Record<ScenarioId, number>;
   people05: Record<ScenarioId, number>;
+  /** [west, south, east, north] and a label point, for flying to the zone; null in older releases. */
+  bbox: [number, number, number, number] | null;
+  at: [number, number] | null;
+  /** Share of ground under canopy of 2 m or more, and detected trees per hectare (descriptive; not a model input). */
+  canopyPct: number | null;
+  treesHa: number | null;
+  /** Share of the zone inside the synthetic roughness test block of the published runs (see LIMITATIONS.md). */
+  roughPct: number | null;
 }
 export interface Validation {
   sfincs_vs_copernicus_s4: { csi: number; hit_rate: number; far: number; model_km2: number; copernicus_km2: number };
@@ -90,12 +100,19 @@ export async function loadRelease(pin: string | null = null): Promise<Release> {
     fetch(`${base}/exposure/exposure_zones.csv`).then((r) => r.text()),
     getJson<Validation>(`${base}/validation.json`),
   ]);
+  const opt = (v: string | undefined): number | null => (v === undefined || v === "" || !Number.isFinite(Number(v)) ? null : Number(v));
   const zones: Zone[] = parseCsv(zonesCsv).map((r) => ({
+    id: opt(r.id),
     name: r.name,
     buildings: Number(r.buildings),
     people: Number(r.people),
     buildings05: { s1: Number(r.buildings_ge_0p5m_s1), s2: Number(r.buildings_ge_0p5m_s2), s3: Number(r.buildings_ge_0p5m_s3) },
     people05: { s1: Number(r.people_ge_0p5m_s1), s2: Number(r.people_ge_0p5m_s2), s3: Number(r.people_ge_0p5m_s3) },
+    bbox: opt(r.minx) === null ? null : [Number(r.minx), Number(r.miny), Number(r.maxx), Number(r.maxy)],
+    at: opt(r.lon) === null ? null : [Number(r.lon), Number(r.lat)],
+    canopyPct: opt(r.canopy_pct),
+    treesHa: opt(r.trees_ha),
+    roughPct: opt(r.roughness_test_pct),
   }));
   return { base, catalog, summary, zones, validation };
 }

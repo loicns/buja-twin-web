@@ -4,23 +4,29 @@ Sources (both CC BY 4.0, Meta & WRI High Resolution Canopy Height, co-registered
   vegetation/processed/meta_chm_1m_domain.tif   1 m canopy height
   vegetation/processed/trees_detected.csv       296,933 detected trees, provenance "measured_chm"
 
-Run:  python pipelines/vegetation.py --dist dist/v20261126
-Writes <dist>/tmp/canopy_rgba.tif and <dist>/tmp/trees.geojsonl (make_tiles.sh turns them into PMTiles).
-Legacy random-point vegetation is never used.
+Run:  python pipelines/vegetation.py --dist dist/v20261126      (after rollups.py)
+Writes <dist>/tmp/canopy_rgba.tif and <dist>/tmp/trees.geojsonl (make_tiles.sh turns them into PMTiles), and adds
+canopy_pct and trees_ha to each neighbourhood in exposure/exposure_zones.csv and exposure/zones.geojson.
+Legacy random-point vegetation is never used. The flood model does not use this canopy (see LIMITATIONS.md).
 """
 import argparse
 import json
 import subprocess
 from pathlib import Path
 
+import geopandas as gpd
 import numpy as np
 import pandas as pd
 import rasterio
 from pyproj import Transformer
+from rasterio.features import rasterize
 
-from common import TWIN
+from common import LAB, TWIN
 
 VEG = TWIN / "vegetation/processed"
+# The roughness grid SFINCS read for every published run holds a 4 x 4 km synthetic "forest" test block
+# (compute_canopy_roughness.py, synthetic mode). Until the runs are redone, each zone carries its overlap with it.
+ROUGHNESS_TEST = LAB / "02_processed/vegetation/canopy_cover_fraction_10m.tif"
 EDGES = [2.0, 5.0, 10.0, 20.0]  # metres of canopy height: shrub and young trees, then three tree classes
 HEX = ["#d5dfc9", "#a9c09a", "#6f9a68", "#3e6b4b"]
 ALPHA = [170, 190, 210, 230]
@@ -64,11 +70,50 @@ def trees(tmp: Path) -> int:
     return len(t)
 
 
+def zone_vegetation(exposure: Path) -> None:
+    """Per neighbourhood: share of ground under canopy >= 2 m, and detected trees per hectare (descriptive only)."""
+    geo, csv = exposure / "zones.geojson", exposure / "exposure_zones.csv"
+    zones = gpd.read_file(geo).to_crs(32735)
+    with rasterio.open(VEG / "meta_chm_1m_domain.tif") as src:
+        step = 5  # an unbiased 1-in-25 sample of the 1 m cells (nearest, not max), enough for a share per zone
+        h = src.read(1, out_shape=(src.height // step, src.width // step))
+        tr = src.transform * src.transform.scale(step, step)
+    lab = rasterize([(g, int(i)) for i, g in zip(zones["id"], zones.geometry)], out_shape=h.shape, transform=tr, fill=0)
+    ids = zones["id"].to_numpy()
+    tot = np.bincount(lab.ravel(), minlength=ids.max() + 1)
+    can = np.bincount(lab.ravel(), weights=(h >= 2).ravel(), minlength=ids.max() + 1)
+    t = pd.read_csv(VEG / "trees_detected.csv", usecols=["x_utm35s", "y_utm35s", "provenance"])
+    assert (t["provenance"] == "measured_chm").all(), "only CHM-detected trees may be used"
+    pts = gpd.GeoDataFrame(geometry=gpd.points_from_xy(t["x_utm35s"], t["y_utm35s"]), crs=32735)
+    n = gpd.sjoin(pts, zones[["id", "geometry"]], predicate="within").groupby("id").size()
+    stats = pd.DataFrame({"id": ids,
+                          "canopy_pct": np.round(100 * can[ids] / np.maximum(tot[ids], 1), 1),
+                          "trees_ha": np.round(n.reindex(ids, fill_value=0).to_numpy() / (zones.geometry.area.to_numpy() / 1e4), 1)})
+    if ROUGHNESS_TEST.exists():
+        with rasterio.open(ROUGHNESS_TEST) as r:
+            block = r.read(1) == 1
+            zl = rasterize([(g, int(i)) for i, g in zip(zones.to_crs(r.crs)["id"], zones.to_crs(r.crs).geometry)],
+                           out_shape=block.shape, transform=r.transform, fill=0)
+        inside = np.bincount(zl.ravel(), weights=block.ravel(), minlength=ids.max() + 1)
+        cells = np.bincount(zl.ravel(), minlength=ids.max() + 1)
+        stats["roughness_test_pct"] = np.round(100 * inside[ids] / np.maximum(cells[ids], 1), 0)
+    cols = ["canopy_pct", "trees_ha", "roughness_test_pct"]
+    table = pd.read_csv(csv).drop(columns=cols, errors="ignore").merge(stats, on="id", how="left")
+    table.to_csv(csv, index=False)
+    g = gpd.read_file(geo).drop(columns=cols, errors="ignore").merge(stats, on="id", how="left")
+    g.to_file(geo, driver="GeoJSON")
+    print(json.dumps({"zone_canopy_pct_median": float(stats["canopy_pct"].median()),
+                      "zone_trees_ha_median": float(stats["trees_ha"].median())}))
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--dist", required=True)
-    tmp = Path(ap.parse_args().dist) / "tmp"
+    dist = Path(ap.parse_args().dist)
+    tmp = dist / "tmp"
     tmp.mkdir(parents=True, exist_ok=True)
+    if (dist / "exposure/zones.geojson").exists():
+        zone_vegetation(dist / "exposure")
     info = canopy(tmp)
     info["trees"] = trees(tmp)
     cat_path = tmp.parent / "catalog.json"

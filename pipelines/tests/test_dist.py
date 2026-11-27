@@ -169,3 +169,22 @@ def test_canopy_tiles_have_four_green_classes():
     for _, data in tiles:
         alphas |= set(np.unique(np.asarray(Image.open(io.BytesIO(data)).convert("RGBA"))[..., 3]).tolist())
     assert len(alphas & {170, 190, 210, 230}) >= 3, alphas
+
+
+def test_zones_have_unique_ids_bounds_and_canopy():
+    """Neighbourhoods are keyed by id (two OSM places share a name), carry a fly-to box and a canopy share."""
+    import pandas as pd
+
+    z = pd.read_csv(DIST / "exposure" / "exposure_zones.csv")
+    assert z["id"].is_unique and z["name"].is_unique
+    w, s, e, n = catalog()["bounds_4326"]
+    assert ((z["minx"] < z["maxx"]) & (z["miny"] < z["maxy"])).all()
+    assert z["minx"].min() >= w - 0.1 and z["maxx"].max() <= e + 0.1 and z["miny"].min() >= s - 0.1 and z["maxy"].max() <= n + 0.1
+    assert ((z["lon"] >= z["minx"]) & (z["lon"] <= z["maxx"]) & (z["lat"] >= z["miny"]) & (z["lat"] <= z["maxy"])).all()
+    assert z["canopy_pct"].between(0, 100).all() and (z["trees_ha"] >= 0).all()
+    if "roughness_test_pct" in z:  # overlap with the synthetic roughness block (see LIMITATIONS.md)
+        assert z["roughness_test_pct"].between(0, 100).all()
+    # each building sits in at most one neighbourhood, so the zone totals cannot exceed the city total
+    assert z["buildings"].sum() <= json.loads((DIST / "exposure" / "exposure_summary.json").read_text())["buildings_total"]
+    props = _first_tile("zones", 12)["zones"]["features"][0]["properties"]
+    assert {"id", "name", "canopy_pct"} <= set(props)
