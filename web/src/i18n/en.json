@@ -101,6 +101,7 @@
  "hint_buildings_3d": "Zoom in to see the buildings in 3D",
  "view_3d": "3D",
  "view_2d": "2D",
+ "view_aria": "View type",
  "view_note_3d": "Terrain and buildings in relief. To tilt: Ctrl + drag, or two fingers on a touch screen.",
  "view_note_2d": "Top-down view. Lighter for phones and slow connections.",
  "lg_canopy": "Canopy height",

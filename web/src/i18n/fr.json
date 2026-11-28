@@ -101,6 +101,7 @@
  "hint_buildings_3d": "Zoomez pour voir les bâtiments en 3D",
  "view_3d": "3D",
  "view_2d": "2D",
+ "view_aria": "Type de vue",
  "view_note_3d": "Relief et bâtiments en volume. Incliner : Ctrl + glisser, ou deux doigts sur un écran tactile.",
  "view_note_2d": "Vue de dessus. Plus légère pour les téléphones et les connexions lentes.",
  "lg_canopy": "Hauteur de canopée",

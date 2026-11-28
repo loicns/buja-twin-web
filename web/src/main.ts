@@ -23,8 +23,8 @@ const narrow = matchMedia("(max-width: 860px)");
 const conn = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
 const hasWebGL2 = (): boolean => { try { return !!document.createElement("canvas").getContext("webgl2"); } catch { return false; } };
 const lowEnd = (navigator.hardwareConcurrency ?? 8) < 4 || !hasWebGL2() || !!conn?.saveData || ["slow-2g", "2g", "3g"].includes(conn?.effectiveType ?? "");
-/** Phones start in 2D: lighter on data and battery, and no accidental tilting. */
-const flatStart = lowEnd || (narrow.matches && matchMedia("(pointer: coarse)").matches);
+/** Only low-end devices and slow or data-saving connections start in 2D; everyone else opens in 3D with buildings. */
+const flatStart = lowEnd;
 
 function toast(text: string): void {
   const el = $("toast");
@@ -106,12 +106,13 @@ async function main(): Promise<void> {
     announce(t("announce_zone", { name: z.name }));
   };
 
+  const set3D = (on: boolean): void => { st = { ...st, threeD: on }; api.set3D(on, st); panel.refresh(st); syncUrl(); syncHint(); };
+  api.onToggle3D(set3D);
   const mount = (): void => {
     panel = buildPanel($("panel-body"), release, st, {
       scenario,
       layer: (id, on) => update({ ...st, layers: { ...st.layers, [id]: { ...st.layers[id], on } } }),
       opacity: (id, v) => { st = { ...st, layers: { ...st.layers, [id]: { ...st.layers[id], opacity: v } } }; api.apply(st); },
-      view3D: (on) => { st = { ...st, threeD: on }; api.set3D(on, st); panel.refresh(st); syncUrl(); syncHint(); },
       zone: showZone,
       zoomTo: (z) => api.map.easeTo({ zoom: z, duration: reduceMotion ? 0 : 600 }),
       limits: openLimits,

@@ -122,6 +122,7 @@ k("hint_buildings", "Zoomez pour voir les bâtiments", "Zoom in to see the build
 k("hint_buildings_3d", "Zoomez pour voir les bâtiments en 3D", "Zoom in to see the buildings in 3D")
 k("view_3d", "3D", "3D")
 k("view_2d", "2D", "2D")
+k("view_aria", "Type de vue", "View type")
 k("view_note_3d", "Relief et bâtiments en volume. Incliner : Ctrl + glisser, ou deux doigts sur un écran tactile.", "Terrain and buildings in relief. To tilt: Ctrl + drag, or two fingers on a touch screen.")
 k("view_note_2d", "Vue de dessus. Plus légère pour les téléphones et les connexions lentes.", "Top-down view. Lighter for phones and slow connections.")
 k("lg_canopy", "Hauteur de canopée", "Canopy height")

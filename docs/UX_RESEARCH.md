@@ -66,11 +66,16 @@ legend and opacity sit under its own switch; layers that need zooming get a "Zoo
 - In 2D, tilt and rotate gestures are off (the commonest accidental touch).
 - In 3D, buildings are extruded from zoom 13, as soon as building tiles exist (before: only from zoom 15, so the 3D
   view showed no houses until you zoomed far in). Below zoom 13 a "Zoom in to see the buildings" button sits on the map.
+- The map opens in 3D with the houses standing (zoom 14.1 on a ~920 px map, never below 13.7; over the centre looking
+  north to Quartier Industriel and Buterere), on phones too. Only low-end devices and slow or data-saving connections
+  start in 2D. "Whole city" still flies out to the overview; switching to 3D from there comes back close enough for
+  the houses.
+- The 3D / 2D switch is on the map, top right (two toggle buttons, the current view filled white), not in a panel fold.
 
 ### Phone
 A bottom sheet replaces the all-or-nothing panel: a peek strip with the three scenarios and the people figure always
 in thumb reach, a "Show details" button (a short swipe also works) for the rest. Map framing accounts for the strip.
-Phones start in 2D. Touch targets are 44 px.
+Touch targets are 44 px.
 
 ### Accessibility (WCAG 2.2 AA)
 Fixed: 3D/2D radios had no arrow keys (2.1.1); the page had no `main` landmark; the map canvas was `aria-hidden` but
@@ -108,7 +113,7 @@ gullies with 108 floods from 1997 to 2021 ([Nsabimana et al. 2023](https://mdpi.
 | Sources created on first use | hidden layers cost nothing, not even their PMTiles header (6 of 11 sources at start) |
 | MapLibre in its own chunk | entry script 312 KB → 24 KB gzip; 70 KB MapLibre CSS no longer render-blocking; the cover paints from HTML |
 | `preconnect` to the data and basemap hosts | saves a TLS setup on each |
-| Phones and slow devices start in 2D | half the terrain requests, no fill-extrusion |
+| Low-end devices and slow connections start in 2D | half the terrain requests, no fill-extrusion |
 | Loading label clears on a reliable signal | the old `idle` signal could never fire: the basemap's `ne2_shaded` source never reports loaded and a few 3D edge tiles stay "loading", so the live site's label stayed up for good |
 
 Timing marks are in the page: `performance.getEntriesByType("mark")` lists `bft:style-load`, `bft:release`,

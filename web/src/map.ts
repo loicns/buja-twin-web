@@ -16,6 +16,8 @@ export interface MapApi {
   attach(release: Release): void;
   apply(st: AppState): void;
   set3D(on: boolean, st: AppState): void;
+  /** The on-map 3D / 2D switch was used. */
+  onToggle3D(cb: (on: boolean) => void): void;
   view(): View;
   elevationAt(lng: number, lat: number): Promise<number | null>;
   onFeature(cb: (kind: FeatureKind, props: Props, at: maplibregl.LngLat) => void): void;
@@ -37,6 +39,14 @@ interface Options { state: AppState; reduceMotion: boolean; t: (k: string) => st
 
 /** The opening view: the whole city, slightly south-east of the domain centre (the lake fills the west). */
 const HOME = { center: [29.3779, -3.3646] as [number, number], zoom: 12.3, width: 920 };
+/** The opening 3D view: over the centre, looking north-north-west to the most affected areas (Quartier Industriel,
+ *  Buterere), close enough for the buildings to stand up (building tiles start at z13, extruded by z13.6). */
+const START_3D = { center: [29.3575, -3.3745] as [number, number], zoom: 14.1, pitch: 60, bearing: -22 };
+const BUILDINGS_3D_ZOOM = 13.7;
+const start3DZoom = (): number => {
+  const w = document.getElementById("map")?.clientWidth || HOME.width;
+  return Math.min(14.6, Math.max(BUILDINGS_3D_ZOOM, START_3D.zoom + Math.log2(w / HOME.width)));
+};
 /** Same framing on any screen: 12.3 fits the city on a ~920 px map; a phone gets about 11. */
 const homeZoom = (): number => {
   const w = document.getElementById("map")?.clientWidth || HOME.width;
@@ -54,10 +64,10 @@ export function createMap(o: Options): MapApi {
   const map = new maplibregl.Map({
     container: "map",
     style: BASEMAP_STYLE,
-    center: v ? [v.x, v.y] : HOME.center,
-    zoom: v?.z ?? homeZoom(),
-    pitch: v?.p ?? (o.state.threeD ? 55 : 0),
-    bearing: v?.b ?? (o.state.threeD ? -20 : 0),
+    center: v ? [v.x, v.y] : o.state.threeD ? START_3D.center : HOME.center,
+    zoom: v?.z ?? (o.state.threeD ? start3DZoom() : homeZoom()),
+    pitch: v?.p ?? (o.state.threeD ? START_3D.pitch : 0),
+    bearing: v?.b ?? (o.state.threeD ? START_3D.bearing : 0),
     maxPitch: 75,
     attributionControl: false, // credits live in the collar bar and the limits dialog
     fadeDuration: o.reduceMotion ? 0 : 200,
@@ -65,6 +75,8 @@ export function createMap(o: Options): MapApi {
   });
   map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-left");
   map.addControl(new HomeControl(() => api.home(), o.t), "top-left");
+  const viewCtl = new ViewControl((on) => toggleCb(on), o.t, o.state.threeD);
+  map.addControl(viewCtl, "top-right");
   map.addControl(new maplibregl.ScaleControl({ maxWidth: 110, unit: "metric" }), "bottom-left");
   map.getCanvas().setAttribute("aria-describedby", "summary"); // the text summary describes the picture
   map.keyboard.enable();
@@ -74,6 +86,7 @@ export function createMap(o: Options): MapApi {
   let featureCb: Parameters<MapApi["onFeature"]>[0] = () => {};
   let cursorCb: Parameters<MapApi["onCursor"]>[0] = () => {};
   let moveCb: () => void = () => {};
+  let toggleCb: (on: boolean) => void = () => {};
   let last: AppState = o.state;
   let release: Release | null = null;
   let sampler: ElevationSampler | null = null;
@@ -231,6 +244,7 @@ export function createMap(o: Options): MapApi {
     if (st.threeD && !map.getTerrain()) { ensureSource("terrain"); map.setTerrain({ source: "terrain", exaggeration: 1.3 }); }
     if (!st.threeD && map.getTerrain()) map.setTerrain(null);
     gestures(st.threeD);
+    viewCtl.sync(st.threeD);
     settleFloods();
   };
 
@@ -300,8 +314,12 @@ export function createMap(o: Options): MapApi {
     },
     set3D(on, st) {
       api.apply({ ...st, threeD: on });
-      map.easeTo({ pitch: on ? 55 : 0, bearing: on ? -20 : 0, duration: o.reduceMotion ? 0 : 700 });
+      viewCtl.sync(on);
+      // 3D means houses: from far out, also come close enough for the buildings to stand up
+      const zoom = on && map.getZoom() < BUILDINGS_3D_ZOOM ? start3DZoom() : undefined;
+      map.easeTo({ pitch: on ? START_3D.pitch : 0, bearing: on ? START_3D.bearing : 0, zoom, duration: o.reduceMotion ? 0 : 900 });
     },
+    onToggle3D: (cb) => { toggleCb = cb; },
     view() {
       const c = map.getCenter();
       return { z: map.getZoom(), x: c.lng, y: c.lat, b: map.getBearing(), p: map.getPitch() };
@@ -324,7 +342,7 @@ export function createMap(o: Options): MapApi {
     },
     home() {
       api.clearFocus();
-      map.flyTo({ center: HOME.center, zoom: homeZoom(), pitch: last.threeD ? 55 : 0, bearing: last.threeD ? -20 : 0, duration: o.reduceMotion ? 0 : 900 });
+      map.flyTo({ center: HOME.center, zoom: homeZoom(), pitch: last.threeD ? 55 : 0, bearing: last.threeD ? START_3D.bearing : 0, duration: o.reduceMotion ? 0 : 900 });
     },
     setBottomPadding(px) { map.setPadding({ top: 0, left: 0, right: 0, bottom: px }); },
     localize(t) {
@@ -336,6 +354,7 @@ export function createMap(o: Options): MapApi {
       set(".maplibregl-ctrl-zoom-out", "zoom_out");
       set(".maplibregl-ctrl-compass", "reset_north");
       set(".ctrl-home", "home");
+      viewCtl.localize(t);
       map.getCanvas().setAttribute("aria-label", t("map_label"));
     },
   };
@@ -358,6 +377,46 @@ class HomeControl implements maplibregl.IControl {
     this.el.className = "maplibregl-ctrl maplibregl-ctrl-group";
     this.el.append(b);
     return this.el;
+  }
+  onRemove(): void { this.el?.remove(); }
+}
+
+/**
+ * The 3D / 2D switch, on the map where people look for it (top right). Two toggle buttons; the pressed one is the
+ * current view. Keyboard: Tab to it, Space or Enter.
+ */
+class ViewControl implements maplibregl.IControl {
+  private el?: HTMLElement;
+  private readonly buttons: HTMLButtonElement[] = [];
+  constructor(private readonly choose: (on: boolean) => void, private t: (k: string) => string, private on: boolean) {}
+  onAdd(): HTMLElement {
+    this.el = document.createElement("div");
+    this.el.className = "maplibregl-ctrl maplibregl-ctrl-group ctrl-view";
+    this.el.setAttribute("role", "group");
+    for (const three of [true, false]) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.dataset.three = String(three);
+      b.addEventListener("click", () => { if (three !== this.on) this.choose(three); });
+      this.buttons.push(b);
+      this.el.append(b);
+    }
+    this.localize(this.t);
+    this.sync(this.on);
+    return this.el;
+  }
+  sync(on: boolean): void {
+    this.on = on;
+    for (const b of this.buttons) b.setAttribute("aria-pressed", String((b.dataset.three === "true") === on));
+  }
+  localize(t: (k: string) => string): void {
+    this.t = t;
+    this.el?.setAttribute("aria-label", t("view_aria"));
+    for (const b of this.buttons) {
+      const three = b.dataset.three === "true";
+      b.textContent = t(three ? "view_3d" : "view_2d");
+      b.title = t(three ? "view_note_3d" : "view_note_2d");
+    }
   }
   onRemove(): void { this.el?.remove(); }
 }

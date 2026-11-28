@@ -10,7 +10,8 @@ A public, read-only web map of modelled flooding in Bujumbura, live at **https:/
   depth, estimated people per neighbourhood and priority hexagon, tree canopy and detected trees, rivers, bridges, terrain.
 - First-visit cover (static HTML, `public/boot.js` decides before paint; `?intro=1` / `?intro=0`), a "Modélisé · non
   calibré" chip in the header on every screen, neighbourhood search with fly-to, clickable top five, depth legend in body
-  terms, scenario cross-fade, share button, keys 1/2/3, a bottom sheet on phones. Limits dialog always reachable.
+  terms, scenario cross-fade, share button, keys 1/2/3, a bottom sheet on phones. Opens in 3D with buildings (2D only on
+  low-end devices); the 3D / 2D switch is on the map, top right. Limits dialog always reachable.
   FR (default) and EN. Cursor readout on mouse devices. Deep links and an `?embed=1` iframe mode (see `web/README.md`).
   The research behind the redesign, and the ranked backlog, are in [`UX_RESEARCH.md`](UX_RESEARCH.md).
 - AI assistant (Gemini) grounded on the published data release; it refuses to forecast.

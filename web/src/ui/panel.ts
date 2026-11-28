@@ -10,7 +10,6 @@ export interface PanelHandlers {
   scenario(id: ScenarioId): void;
   layer(id: LayerId, on: boolean): void;
   opacity(id: LayerId, v: number): void;
-  view3D(on: boolean): void;
   zone(z: Zone): void;
   zoomTo(z: number): void;
   limits(): void;
@@ -147,13 +146,6 @@ export function buildPanel(root: HTMLElement, release: Release, st0: AppState, h
     })),
     g.id === "vegetation" ? h("p", { class: "lg-why" }, h("strong", {}, t("veg_why_title")), t("veg_why")) : null));
 
-  const view = ["3d", "2d"].map((k) => {
-    const b = h("button", { type: "button", role: "radio", class: "seg seg-small", "data-view": k }, t(`view_${k}`));
-    b.addEventListener("click", () => hd.view3D(k === "3d"));
-    return b;
-  });
-  radioKeys(view, (i) => hd.view3D(i === 0));
-  const viewNote = h("p", { class: "note" });
 
   const fold = (title: string, ...kids: (Node | null)[]): HTMLElement =>
     h("details", { class: "fold" }, h("summary", {}, title), h("div", { class: "fold-body" }, ...kids));
@@ -170,7 +162,7 @@ export function buildPanel(root: HTMLElement, release: Release, st0: AppState, h
     h("section", {}, h("h2", { class: "label" }, t("sec_depth")), depthList, h("p", { class: "note" }, t("depth_note"))),
     h("section", {}, h("h2", { class: "label" }, t("sec_top")), bars, h("p", { class: "note" }, flyable ? t("top_note") : t("top_note").split(". ")[0] + ".")),
     fold(t("sec_layers"), ...layerGroups),
-    fold(t("sec_view"), h("div", { class: "segs segs-2", role: "radiogroup", "aria-label": t("sec_view") }, ...view), viewNote, ...extra),
+    extra.length ? fold(t("sec_view"), ...extra) : null, // the 3D / 2D switch is on the map
     fold(t("sec_about"),
       h("div", { class: "about-links" }, link(t("intro_reopen"), hd.intro), link(t("limits_title"), hd.limits),
         h("a", { href: CODE_URL, target: "_blank", rel: "noopener" }, t("d_code")),
@@ -216,12 +208,6 @@ export function buildPanel(root: HTMLElement, release: Release, st0: AppState, h
       r.extra.hidden = !st.layers[id].on;
     }
     zoom(zoomNow);
-    for (const b of view) {
-      const on3 = b.dataset.view === "3d";
-      b.setAttribute("aria-checked", String(on3 === st.threeD));
-      b.tabIndex = on3 === st.threeD ? 0 : -1;
-    }
-    viewNote.textContent = st.threeD ? t("view_note_3d") : t("view_note_2d");
 
     const top = [...release.zones].sort((a, b) => b.people05[st.scenario] - a.people05[st.scenario]).slice(0, 5);
     const max = Math.max(...top.map((z) => z.people05[st.scenario]), 1);

@@ -221,6 +221,11 @@ input[type="range"]::-moz-range-thumb { width: 12px; height: 16px; background: v
 #map .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1); }
 #map .maplibregl-ctrl-group:not(:empty) { box-shadow: none; }
 #map .ctrl-home { display: grid; place-content: center; color: var(--white); }
+/* 3D / 2D switch, top right: two flat toggles side by side, the current view filled white */
+#map .ctrl-view { display: flex; }
+#map .ctrl-view button { width: auto; min-width: 44px; height: 36px; padding: 0 12px; border-top: 0; border-left: 1px solid var(--rule-dark-2); color: var(--white); font-family: var(--mono); font-size: var(--fs-sm); letter-spacing: var(--track); }
+#map .ctrl-view button:first-child { border-left: 0; }
+#map .ctrl-view button[aria-pressed="true"], #map .ctrl-view button[aria-pressed="true"]:hover { background: var(--white) !important; color: var(--navy-950); cursor: default; }
 #map .maplibregl-ctrl-scale { background: rgba(246,246,243,.92); color: var(--ink); border: 1px solid var(--ink); border-top: 0; font-family: var(--mono); font-size: var(--fs-xs); letter-spacing: var(--track); text-transform: uppercase; }
 #map .maplibregl-popup-content { padding: 12px 14px; border-radius: 0; box-shadow: none; border: 1px solid var(--edge-light); background: var(--paper); color: var(--ink); font-family: var(--sans); }
 #map .maplibregl-popup-tip { display: none; }
@@ -313,7 +318,8 @@ input[type="range"]::-moz-range-thumb { width: 12px; height: 16px; background: v
   .collar-caption, .collar-readout { display: none; }
   .collar-meta { text-align: left; }
   .chat { left: 0; right: 0; bottom: 0; width: auto; max-height: 75%; z-index: calc(var(--z-sheet) + 2); }
-  .maplibregl-ctrl-group button { width: 40px; height: 40px; }
+  #map .maplibregl-ctrl-group button { width: 40px; height: 40px; }
+  #map .ctrl-view button { height: var(--hit); min-width: var(--hit); }
   /* cover: full screen, the button stays in thumb reach */
   .with-intro .intro { position: fixed; inset: var(--header-h) 0 0 0; width: auto; border-right: 0; }
   .intro-body { padding: 22px 18px 8px; }
